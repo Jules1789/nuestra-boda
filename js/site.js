@@ -266,26 +266,25 @@
   /* -------- Confirmación -------- */
   function setupRsvp() {
     const form = $('#rsvpForm');
-    const maxComp = guest ? Math.max(0, (guest.invited || 1) - 1) : 6;
-    const sel = $('#fComp');
-    sel.innerHTML = Array.from({ length: maxComp + 1 }, (_, i) => '<option value="' + i + '">' + (i === 0 ? 'Solo yo' : i + (i === 1 ? ' acompañante' : ' acompañantes')) + '</option>').join('');
-    if (guest) {
-      $('#compHelp').textContent = maxComp > 0 ? 'Tu invitación incluye hasta ' + maxComp + (maxComp === 1 ? ' acompañante.' : ' acompañantes.') : 'Tu invitación es individual.';
-      if (maxComp === 0) $('#fComp').closest('.field').hidden = true;
-    }
-
-    const compNamesBox = $('#compNames');
+    // Boda privada: los lugares ya están contados. El invitado NO elige cuántos acompañantes lleva;
+    // confirma por toda su invitación (los lugares que le asignaron los novios).
+    const companionsFixed = guest ? Math.max(0, (parseInt(guest.invited, 10) || 1) - 1) : 0;
     const existing = guest ? B.splitNames(guest.companionNames) : [];
-    function renderCompNames() {
-      const n = parseInt(sel.value, 10) || 0;
-      const prev = $$('input', compNamesBox).map((i) => i.value);
-      compNamesBox.innerHTML = Array.from({ length: n }, (_, i) => {
-        let v = prev[i] != null ? prev[i] : (existing[i] || '');
-        if (/^acompa[nñ]ante/i.test(v) || /^(esposa|esposo) de /i.test(v)) v = prev[i] || '';
-        return '<input placeholder="Nombre del acompañante ' + (i + 1) + '" value="' + esc(v) + '">';
-      }).join('');
+    const isPlaceholder = (v) => !v || /^acompa[nñ]ante/i.test(v) || /^(esposa|esposo|novia|novio|pareja) de /i.test(v);
+    const party = $('#party');
+    if (!guest) {
+      party.innerHTML = '<p class="party-note">Esta confirmación es <b>solo para ti</b>. Si tu invitación incluye a más personas, usa el enlace personal que te enviamos por WhatsApp.</p>';
+    } else if (!companionsFixed) {
+      party.innerHTML = '<p class="party-note">Tu invitación es <b>individual</b>: un lugar reservado para ti.</p>';
+    } else {
+      party.innerHTML = '<p class="party-note">Tu invitación es para <b>' + (companionsFixed + 1) + ' personas</b>:</p><ul class="party-list"><li>' + esc(guest.name) + '</li>' +
+        Array.from({ length: companionsFixed }, (_, i) => {
+          const v = existing[i] || '';
+          return isPlaceholder(v)
+            ? '<li><input data-slot="' + i + '" placeholder="Nombre de tu acompañante (opcional)"></li>'
+            : '<li data-name="' + esc(v) + '">' + esc(v) + '</li>';
+        }).join('') + '</ul><small class="muted">Si alguien de tu invitación no podrá asistir, cuéntanos en el mensaje para los novios.</small>';
     }
-    sel.addEventListener('change', renderCompNames);
 
     $$('input[name=attending]').forEach((r) => r.addEventListener('change', () => {
       $('#yesFields').hidden = !$('input[name=attending][value=si]').checked;
@@ -299,10 +298,7 @@
       if (guest.status === 'si' || guest.status === 'no') {
         $('input[name=attending][value=' + guest.status + ']').checked = true;
         $('#yesFields').hidden = guest.status !== 'si';
-        sel.value = String(Math.min(maxComp, guest.companions || 0));
         $('#rsvpSub').textContent = 'Ya recibimos tu respuesta. Si algo cambió, puedes actualizarla aquí.';
-      } else {
-        sel.value = String(maxComp);
       }
       const diets = String(guest.diet || '').split(',').map((x) => x.trim()).filter(Boolean);
       const known = $$('#dietChips input').map((i) => i.value);
@@ -311,7 +307,6 @@
       $('#fSong').value = guest.song || '';
       $('#fComments').value = guest.comments || '';
     }
-    renderCompNames();
 
     form.addEventListener('submit', async (ev) => {
       ev.preventDefault();
@@ -323,8 +318,12 @@
       if (bad) { B.toast('Escribe tu nombre y dinos si vienes 🙂', 'warn'); return; }
       const attending = att.value === 'si';
       const diet = $$('#dietChips input:checked').map((i) => i.value).concat($('#fDietOther').value.trim() ? [$('#fDietOther').value.trim()] : []).join(', ');
-      const companions = attending ? parseInt(sel.value, 10) || 0 : 0;
-      const companionNames = $$('input', compNamesBox).map((i, k) => i.value.trim() || ('Acompañante ' + (k + 1) + ' de ' + name.split(' ')[0])).join(', ');
+      const companions = attending ? companionsFixed : 0;
+      // Conserva los nombres que ya tenían; solo reemplaza los "Acompañante de…" si el invitado escribió el nombre
+      const companionNames = Array.from({ length: companionsFixed }, (_, i) => {
+        const typed = $('input[data-slot="' + i + '"]', party);
+        return (typed && typed.value.trim()) || existing[i] || ('Acompañante ' + (i + 1) + ' de ' + name.split(' ')[0]);
+      }).join(', ');
       const btn = $('#rsvpBtn');
       btn.disabled = true; btn.textContent = 'Enviando…';
       try {

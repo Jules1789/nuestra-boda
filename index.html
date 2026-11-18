@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Nuestra boda</title>
+  <meta name="robots" content="noindex, nofollow, noarchive">
   <meta name="description" content="¡Nos casamos! Detalles, ubicación y confirmación de asistencia.">
   <meta property="og:title" content="¡Nos casamos!">
   <meta property="og:description" content="Todos los detalles de nuestra boda y confirma tu asistencia.">
@@ -13,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/site.css?v=3">
+  <link rel="stylesheet" href="css/site.css?v=4">
 </head>
 <body>
   <div id="loading" class="loading"><div class="rings"></div></div>
@@ -194,12 +195,7 @@
         </fieldset>
 
         <div id="yesFields" hidden>
-          <label class="field">
-            <span id="compLabel">¿Cuántos acompañantes vienen contigo?</span>
-            <select id="fComp" name="companions"></select>
-            <small class="muted" id="compHelp"></small>
-          </label>
-          <div id="compNames" class="comp-names"></div>
+          <div class="field party" id="party"></div>
 
           <fieldset class="field">
             <legend>¿Alguna restricción alimentaria?</legend>
@@ -264,8 +260,8 @@
     <button class="lb-nav next" id="lbNext" aria-label="Siguiente">›</button>
   </div>
 
-  <script src="js/config.js?v=3"></script>
-  <script src="js/common.js?v=3"></script>
-  <script src="js/site.js?v=3"></script>
+  <script src="js/config.js?v=4"></script>
+  <script src="js/common.js?v=4"></script>
+  <script src="js/site.js?v=4"></script>
 </body>
 </html>

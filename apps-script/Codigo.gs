@@ -355,7 +355,7 @@ function publico_(p) {
     var g = leerInvitados_().filter(function (x) { return x.id === p.g; })[0];
     if (g) res.guest = {
       id: g.id, name: g.name, invited: g.invited, status: g.status, companions: g.companions,
-      companionNames: g.companionNames, diet: g.diet, comments: g.comments, song: g.song, phone: g.phone, cabin: g.cabin
+      companionNames: g.companionNames, diet: g.diet, comments: g.comments, song: g.song, cabin: g.cabin
     };
   }
   return res;
@@ -373,9 +373,10 @@ function rsvp_(p) {
   }
   var ahora = new Date().toISOString();
   var asiste = p.attending === true || p.attending === 'si' || p.attending === 'true';
-  var acomp = asiste ? Math.max(0, Math.min(20, parseInt(p.companions, 10) || 0)) : 0;
   var esNuevo = !g;
-  if (g && g.invited > 0 && g.source !== 'web' && acomp > g.invited - 1) acomp = g.invited - 1;
+  // Boda privada: los lugares los asignan los novios. Quien está en la lista confirma por toda su
+  // invitación; alguien que no está en la lista solo puede confirmar por sí mismo.
+  var acomp = asiste && g ? Math.max(0, (parseInt(g.invited, 10) || 1) - 1) : 0;
 
   if (esNuevo) {
     g = { id: nuevoId_(), name: nombre, group: '', phone: '', email: '', invited: 1 + acomp, status: 'pendiente',
