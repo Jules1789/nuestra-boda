@@ -399,11 +399,11 @@ function telefonos_(s) { return String(s || '').split(/[,;\/\n]+/).map(normTel_)
 /*  Web pública                                                         */
 /* ------------------------------------------------------------------ */
 
-// Lo que un invitado puede ver de su propia invitación (sin teléfonos ni notas privadas)
+// Lo que un invitado puede ver de su propia invitación (sin teléfonos, cabaña ni notas privadas)
 function invitadoPublico_(g) {
   return {
     id: g.id, name: g.name, label: etiqueta_(g), invited: g.invited, status: g.status, members: miembros_(g),
-    attendees: asistentesIdx_(g).join(','), diet: g.diet, comments: g.comments, song: g.song, cabin: g.cabin
+    attendees: asistentesIdx_(g).join(','), diet: g.diet, comments: g.comments, song: g.song
   };
 }
 

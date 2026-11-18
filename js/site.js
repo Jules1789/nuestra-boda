@@ -79,10 +79,107 @@
     $('#welcomeText').textContent = cfg.welcomeMessage || '';
     $('#welcomeSeats').textContent = n > 1 ? 'Hemos reservado ' + n + ' lugares para ustedes.' : 'Hemos reservado un lugar especialmente para ti.';
     $('#welcome').hidden = false;
-    $('#welcomeBtn').onclick = () => { $('#welcome').hidden = true; document.body.classList.remove('locked'); window.scrollTo(0, 0); };
+    setupWelcome();
+    // Si ya había respondido antes, le mostramos su respuesta (con opción de cambiarla)
+    if (g.status === 'si' || g.status === 'no') welcomeDone(true); else welcomeStep(1);
   }
 
-  // Saludo con su nombre o el de su familia, lugares y cabaña
+  /* -------- Bienvenida: Confirmar / No podremos asistir -------- */
+  const DIETS = ['Vegetariano', 'Vegano', 'Sin gluten', 'Sin lactosa', 'Alergia a mariscos', 'Alergia a nueces'];
+  let welcomeReady = false, wAttending = true;
+
+  function welcomeStep(n) {
+    $('#wStep1').hidden = n !== 1;
+    $('#wForm').hidden = n !== 2;
+    $('#wDone').hidden = n !== 3;
+    $('#welcomeText').hidden = n !== 1;
+    $('#welcomeSeats').hidden = n !== 1;
+  }
+
+  function closeWelcome() {
+    $('#welcome').hidden = true;
+    document.body.classList.remove('locked');
+    window.scrollTo(0, 0);
+  }
+
+  // Formulario dentro de la bienvenida. Si van: quiénes, restricciones, canción y mensaje. Si no: solo mensaje.
+  function welcomeForm(attending) {
+    wAttending = attending;
+    const ms = guest.members && guest.members.length ? guest.members : [guest.name];
+    const marked = guest.status === 'si' ? String(guest.attendees || '').split(',').filter(Boolean).map(Number) : null;
+    $('#wMembersBox').hidden = !attending || ms.length < 2;
+    $('#wMembersLabel').textContent = '¿Quiénes de tu familia asistirán?';
+    $('#wMembers').innerHTML = ms.map((m, i) => {
+      const on = marked ? marked.includes(i) : true;
+      const name = B.isPlaceholderName(m) ? '<input data-wslot="' + i + '" placeholder="Nombre de tu acompañante">' : esc(m);
+      return '<label class="mcheck' + (on ? ' on' : '') + '"><input type="checkbox" data-wi="' + i + '"' + (on ? ' checked' : '') + '><span class="nm">' + name + '</span></label>';
+    }).join('');
+    $('#wYesFields').hidden = !attending;
+    const diets = String(guest.diet || '').split(',').map((x) => x.trim()).filter(Boolean);
+    $('#wDiet').innerHTML = DIETS.map((d) => '<label><input type="checkbox" value="' + esc(d) + '"' + (diets.includes(d) ? ' checked' : '') + '><span>' + esc(d) + '</span></label>').join('');
+    $('#wDietOther').value = diets.filter((d) => !DIETS.includes(d)).join(', ');
+    $('#wSong').value = guest.song || '';
+    $('#wComments').value = guest.comments || '';
+    $('#wSend').textContent = attending ? 'Enviar confirmación' : 'Enviar respuesta';
+    welcomeStep(2);
+    $('#welcome').scrollTop = 0;
+  }
+
+  function welcomeDone(alreadyAnswered) {
+    const ms = guest.members || [guest.name];
+    const idx = guest.status === 'si' ? String(guest.attendees || '').split(',').filter(Boolean).map(Number) : [];
+    if (idx.length) {
+      $('#wDoneTitle').textContent = alreadyAnswered ? 'Ya tenemos tu confirmación 🥂' : '¡Gracias por confirmar! 🥂';
+      $('#wDoneText').textContent = (idx.length > 1 ? 'Asistirán ' + idx.length + ' personas' : 'Asistirá 1 persona') +
+        (ms.length > 1 ? ': ' + idx.map((i) => ms[i]).filter(Boolean).join(', ') : '') + '. ¡Nos vemos ahí!';
+    } else {
+      $('#wDoneTitle').textContent = alreadyAnswered ? 'Ya recibimos tu respuesta 💌' : 'Gracias por avisarnos 💌';
+      $('#wDoneText').textContent = cfg.declineMessage || '';
+    }
+    welcomeStep(3);
+  }
+
+  function setupWelcome() {
+    if (welcomeReady) return;
+    welcomeReady = true;
+    $('#wYes').onclick = () => welcomeForm(true);
+    $('#wNo').onclick = () => welcomeForm(false);
+    $('#wLater').onclick = closeWelcome;
+    $('#wOpen').onclick = closeWelcome;
+    $('#wBack').onclick = () => welcomeStep(1);
+    $('#wChange').onclick = () => welcomeStep(1);
+    $('#wMembers').addEventListener('change', () => $$('#wMembers .mcheck').forEach((l) => l.classList.toggle('on', l.querySelector('input[type=checkbox]').checked)));
+    $('#wForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const ms = guest.members && guest.members.length ? guest.members : [guest.name];
+      let attendees = [];
+      if (wAttending) {
+        attendees = ms.length < 2 ? [0] : $$('#wMembers input[type=checkbox]').filter((b) => b.checked).map((b) => +b.dataset.wi);
+        if (!attendees.length) { B.toast('Marca quién asistirá (o elige “No podremos asistir”)', 'warn'); return; }
+      }
+      const memberNames = ms.map((m, i) => { const inp = $('input[data-wslot="' + i + '"]', $('#wMembers')); return inp ? inp.value.trim() : ''; });
+      const diet = wAttending ? $$('#wDiet input:checked').map((i) => i.value).concat($('#wDietOther').value.trim() ? [$('#wDietOther').value.trim()] : []).join(', ') : '';
+      const btn = $('#wSend');
+      btn.disabled = true; btn.textContent = 'Enviando…';
+      try {
+        const res = await B.api('rsvp', {
+          g: guest.id, phone: phoneOk, name: ms[0], attendees, memberNames,
+          diet, song: wAttending ? $('#wSong').value.trim() : '', comments: $('#wComments').value.trim()
+        });
+        if (!res || !res.ok) throw new Error((res && res.error) || 'Error');
+        if (res.guest) guest = res.guest;
+        remember(guest.id, phoneOk);
+        verifyRsvp(phoneOk); // la sección "Confirma tu asistencia" de la página ya muestra la respuesta
+        welcomeDone(false);
+      } catch (ex) {
+        B.toast(ex.message && ex.message !== 'Error' && !/fetch/i.test(ex.message) ? esc(ex.message) : 'No pudimos enviar tu respuesta. Revisa tu conexión e inténtalo de nuevo.', 'error', 5000);
+      } finally {
+        btn.disabled = false; btn.textContent = wAttending ? 'Enviar confirmación' : 'Enviar respuesta';
+      }
+    };
+  }
+
+  // Saludo con su nombre o el de su familia y sus lugares
   function personalize() {
     if (!guest) return;
     const label = B.groupLabel(guest);
@@ -92,7 +189,7 @@
     note.hidden = false;
     note.innerHTML = (n > 1 ? 'Queridos' : 'Querid@') + ' <b>' + esc(label) + '</b>: ' +
       (n > 1 ? 'hemos reservado <b>' + n + ' lugares</b> para ustedes.' : 'hemos reservado <b>un lugar</b> especialmente para ti.');
-    if (guest.cabin) { const c = $('#dCabin'); c.hidden = false; c.textContent = '🏡 Tu cabaña: ' + guest.cabin; $('#cardLodging').hidden = false; }
+    // La cabaña de cada quien es privada: solo la ven los novios en el panel
   }
 
   function setText(sel, txt) { const el = $(sel); if (el) el.textContent = txt || ''; }
@@ -496,7 +593,7 @@
     } else {
       $('#doneIcon').textContent = '💌';
       $('#doneTitle').textContent = '¡Gracias por avisarnos, ' + first + '!';
-      $('#doneText').textContent = 'Te vamos a extrañar. Si cambian tus planes, puedes actualizar tu respuesta aquí mismo.';
+      $('#doneText').textContent = cfg.declineMessage || 'Te vamos a extrañar. Si cambian tus planes, puedes actualizar tu respuesta aquí mismo.';
       $('#doneCal').innerHTML = '';
     }
     if (scroll) done.scrollIntoView({ behavior: 'smooth', block: 'center' });

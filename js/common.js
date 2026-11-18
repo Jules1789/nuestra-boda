@@ -38,6 +38,7 @@
     colorText: '#2f2a24',
     colorCard: '#fffdf9',
     colorNature: '#5f6b56',
+    declineMessage: 'Te vamos a extrañar mucho y te llevaremos en el corazón ese día. Si tus planes cambian, aquí mismo puedes actualizar tu respuesta.',
     welcomeMessage: 'Con todo nuestro cariño queremos compartir contigo uno de los días más importantes de nuestra vida. Tu presencia hará este momento aún más especial.',
     siteUrl: '',
     rsvpDeadline: '',
@@ -58,6 +59,7 @@
     ['Pareja', 'heroFocus', '', 'hidden'],
     ['Pareja', 'hashtag', 'Hashtag', 'text'],
     ['Pareja', 'welcomeMessage', 'Mensaje al abrir la invitación', 'textarea', 'Aparece justo después de que el invitado escribe su celular, con su nombre o el de su familia arriba.'],
+    ['Pareja', 'declineMessage', 'Mensaje para quienes no podrán asistir', 'textarea', 'Lo ven justo después de responder “No podremos asistir”.'],
     ['Colores', '_palette', 'Paletas listas', 'palette', 'Toca una paleta para probarla; después ajusta cualquier color y pulsa Guardar.'],
     ['Colores', 'theme', 'Color principal (botones y detalles)', 'color'],
     ['Colores', 'colorBg', 'Color de fondo', 'color'],
@@ -472,7 +474,7 @@
     const ok = (o) => Object.assign({ ok: true }, o || {});
     const isSeated = (id) => Object.keys(db.plan.seats || {}).some((k) => k.split('#')[0] === id);
     // Lo que el invitado puede ver de su invitación (igual que Apps Script): sin teléfonos ni notas
-    const pub = (g) => g && { id: g.id, name: g.name, label: groupLabel(g), invited: g.invited, status: g.status, members: members(g), attendees: attendingIdx(g).join(','), diet: g.diet, comments: g.comments, song: g.song, cabin: g.cabin };
+    const pub = (g) => g && { id: g.id, name: g.name, label: groupLabel(g), invited: g.invited, status: g.status, members: members(g), attendees: attendingIdx(g).join(','), diet: g.diet, comments: g.comments, song: g.song };
     const find = (p) => {
       const tel = normPhone(p.phone), n = norm(p.name);
       return (p.g && db.guests.find((x) => x.id === p.g)) ||
