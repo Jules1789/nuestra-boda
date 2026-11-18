@@ -87,9 +87,7 @@ function configurarHoja() {
   if (!actual.adminPin || actual.adminPin === '1234') {
     var pin = String(Math.floor(100000 + Math.random() * 900000));
     guardarConfig_({ adminPin: pin });
-    var aviso = 'La clave de tu panel de organizadores es: ' + pin + '
-
-Apúntala. También la ves en la pestaña "App Configuracion" (fila adminPin) y ahí mismo la puedes cambiar.';
+    var aviso = 'La clave de tu panel de organizadores es: ' + pin + '\n\nApúntala. También la ves en la pestaña "App Configuracion" (fila adminPin) y ahí mismo la puedes cambiar.';
     Logger.log(aviso);
     try { SpreadsheetApp.getUi().alert(aviso); } catch (e) { /* si se ejecuta sin la hoja abierta */ }
   }
