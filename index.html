@@ -14,65 +14,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/site.css?v=10">
+  <link rel="stylesheet" href="css/site.css?v=11">
 </head>
 <body>
   <div id="loading" class="loading"><div class="rings"></div></div>
-
-  <!-- Antes de ver la página: el invitado escribe su celular -->
-  <div class="gate" id="gate" hidden>
-    <form class="gate-card" id="gateForm" novalidate>
-      <p class="eyebrow">Invitación de boda</p>
-      <h1 class="gate-names" id="gateNames"></h1>
-      <p class="gate-date" id="gateDate"></p>
-      <p class="gate-text">Para abrir tu invitación personal, escribe tu número de celular.</p>
-      <label class="field"><span>Tu celular</span><input id="gPhone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="10 dígitos" maxlength="18"></label>
-      <label class="field"><span>Confírmalo</span><input id="gPhone2" type="tel" inputmode="numeric" autocomplete="off" placeholder="Escríbelo otra vez" maxlength="18"></label>
-      <label class="field" id="gNameField" hidden><span>Tu nombre completo</span><input id="gName" autocomplete="name" placeholder="Como aparece en tu invitación"><small class="muted">No encontramos ese número. Escribe tu nombre para buscar tu invitación.</small></label>
-      <p class="gate-error" id="gateError" hidden></p>
-      <button class="btn btn-primary btn-block" type="submit" id="gateBtn">Abrir mi invitación</button>
-    </form>
-    <svg class="gate-hills" viewBox="0 0 1440 160" preserveAspectRatio="none" aria-hidden="true"><path d="M0 120 L180 60 L320 110 L520 30 L700 105 L880 50 L1060 110 L1240 45 L1440 100 L1440 160 L0 160Z" style="fill:var(--n-far)"/><path d="M0 140 Q360 100 720 135 T1440 125 L1440 160 L0 160Z" style="fill:var(--n-near)"/></svg>
-  </div>
-
-  <!-- Al abrir: mensaje con el nombre de la persona o de la familia -->
-  <div class="welcome" id="welcome" hidden>
-    <div class="welcome-card">
-      <div class="seal" id="welcomeSeal"></div>
-      <p class="eyebrow">Esta invitación es para</p>
-      <h2 class="welcome-name" id="welcomeName"></h2>
-      <p class="welcome-text" id="welcomeText"></p>
-      <p class="welcome-seats" id="welcomeSeats"></p>
-      <!-- Paso 1: ¿asisten? -->
-      <div id="wStep1">
-        <div class="wbtns">
-          <button class="btn btn-primary" type="button" id="wYes">🥂 Confirmar asistencia</button>
-          <button class="btn btn-ghost" type="button" id="wNo">💌 No podremos asistir</button>
-        </div>
-        <button class="wlater" type="button" id="wLater">Ver la invitación y responder después</button>
-      </div>
-      <!-- Paso 2: detalles (si confirman: quiénes, restricciones, canción y mensaje; si no: solo mensaje) -->
-      <form id="wForm" class="wform" hidden novalidate>
-        <div id="wMembersBox" class="wsec"><p class="wlabel" id="wMembersLabel">¿Quiénes asistirán?</p><div class="member-checks" id="wMembers"></div></div>
-        <div id="wYesFields">
-          <div class="wsec"><p class="wlabel">¿Alguna restricción alimentaria?</p><div class="chips" id="wDiet"></div><input id="wDietOther" placeholder="Otra (escríbela aquí)"></div>
-          <div class="wsec"><p class="wlabel">🎵 ¿Qué canción no puede faltar?</p><input id="wSong" placeholder="Canción y artista (opcional)"></div>
-        </div>
-        <div class="wsec"><p class="wlabel">💌 Mensaje para los novios <span class="muted">(opcional)</span></p><textarea id="wComments" rows="3" placeholder="Unas palabras, una duda, lo que quieras…"></textarea></div>
-        <div class="wbtns">
-          <button class="btn btn-primary" type="submit" id="wSend">Enviar confirmación</button>
-          <button class="btn btn-ghost" type="button" id="wBack">← Regresar</button>
-        </div>
-      </form>
-      <!-- Paso 3: gracias -->
-      <div id="wDone" hidden>
-        <p class="wdone-title" id="wDoneTitle"></p>
-        <p class="welcome-text" id="wDoneText"></p>
-        <div class="wbtns"><button class="btn btn-primary" type="button" id="wOpen">Ver mi invitación</button></div>
-        <button class="wlater" type="button" id="wChange">Cambiar mi respuesta</button>
-      </div>
-    </div>
-  </div>
 
   <header class="hero" id="inicio">
     <div class="hero-bg" id="heroBg"></div>
@@ -235,8 +180,17 @@
       <p class="sub" id="rsvpSub">Nos ayudará mucho saber si nos acompañas.</p>
 
       <form id="rsvpForm" class="rsvp-form" novalidate>
-        <!-- Paso 1: celular (dos veces) -->
-        <div id="stepPhone">
+        <!-- Paso 1: ¿asisten? -->
+        <div id="stepChoice">
+          <p class="party-note" id="choiceNote">Después de ver todos los detalles, cuéntanos si nos acompañarás.</p>
+          <div class="wbtns">
+            <button class="btn btn-primary" type="button" id="cYes">🥂 Confirmar asistencia</button>
+            <button class="btn btn-ghost" type="button" id="cNo">💌 No podremos asistir</button>
+          </div>
+        </div>
+
+        <!-- Paso 2: celular (dos veces) para ligar la respuesta a su invitación -->
+        <div id="stepPhone" hidden>
           <label class="field">
             <span>Tu número de celular</span>
             <input id="fPhone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="10 dígitos" maxlength="18">
@@ -244,23 +198,26 @@
           <label class="field">
             <span>Confírmalo</span>
             <input id="fPhone2" type="tel" inputmode="numeric" autocomplete="off" placeholder="Escríbelo otra vez" maxlength="18">
-            <small class="muted" id="phoneHelp">Con tu número podrás regresar y cambiar tu respuesta cuando quieras.</small>
+            <small class="muted">Con tu número podrás regresar y cambiar tu respuesta cuando quieras.</small>
           </label>
           <label class="field" id="nameField" hidden>
             <span>Tu nombre completo</span>
-            <input id="fName" autocomplete="name" placeholder="Nombre y apellido">
+            <input id="fName" autocomplete="name" placeholder="Como aparece en tu invitación">
             <small class="muted">No encontramos ese número. Escribe tu nombre para buscar tu invitación.</small>
           </label>
-          <button class="btn btn-primary btn-block" type="button" id="btnContinue">Continuar</button>
+          <p class="gate-error" id="phoneError" hidden></p>
+          <div class="wbtns">
+            <button class="btn btn-primary" type="button" id="btnContinue">Continuar</button>
+            <button class="btn btn-ghost" type="button" id="phoneBack">← Regresar</button>
+          </div>
         </div>
 
-        <!-- Paso 2: quiénes de la familia asistirán -->
+        <!-- Paso 3: detalles. Si van: quiénes, restricciones, canción y mensaje. Si no: solo mensaje -->
         <div id="stepAnswer" hidden>
           <div class="who" id="who"></div>
-          <fieldset class="field">
+          <fieldset class="field" id="membersBox">
             <legend id="checksLegend">¿Quiénes asistirán?</legend>
             <div class="member-checks" id="memberChecks"></div>
-            <label class="none-check"><input type="checkbox" id="noneCheck"><span>💌 No podremos asistir</span></label>
           </fieldset>
 
           <div id="yesFields">
@@ -284,11 +241,14 @@
           </div>
 
           <label class="field">
-            <span>Mensaje para los novios (opcional)</span>
+            <span>💌 Mensaje para los novios (opcional)</span>
             <textarea id="fComments" rows="3" placeholder="Unas palabras, una duda, lo que quieras…"></textarea>
           </label>
 
-          <button class="btn btn-primary btn-block" type="submit" id="rsvpBtn">Enviar confirmación</button>
+          <div class="wbtns">
+            <button class="btn btn-primary" type="submit" id="rsvpBtn">Enviar confirmación</button>
+            <button class="btn btn-ghost" type="button" id="answerBack">← Regresar</button>
+          </div>
         </div>
         <p class="deadline muted" id="deadline"></p>
       </form>
@@ -323,8 +283,8 @@
     <button class="lb-nav next" id="lbNext" aria-label="Siguiente">›</button>
   </div>
 
-  <script src="js/config.js?v=10"></script>
-  <script src="js/common.js?v=10"></script>
-  <script src="js/site.js?v=10"></script>
+  <script src="js/config.js?v=11"></script>
+  <script src="js/common.js?v=11"></script>
+  <script src="js/site.js?v=11"></script>
 </body>
 </html>

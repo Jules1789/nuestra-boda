@@ -753,6 +753,22 @@
       };
     });
     COLOR_KEYS.forEach((k) => { if (form.elements[k]) form.elements[k].addEventListener('input', previewColors); });
+    // Fecha límite: al elegirla en el calendario se escribe (o se cambia) dentro del mensaje para quienes no asisten
+    const dl = form.elements.declineDeadline, dm = form.elements.declineMessage;
+    if (dl && dm) {
+      const fmt = (iso) => { const d = new Date(iso + 'T12:00'); return isNaN(d) ? '' : d.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' }); };
+      const RX = /\s*antes del \d{1,2} de [a-záéíóúñ]+ de \d{4}/i;
+      dl.addEventListener('change', () => {
+        let msg = dm.value;
+        const txt = dl.value ? fmt(dl.value) : '';
+        if (!txt) { dm.value = msg.replace(RX, ''); return; }
+        if (RX.test(msg)) msg = msg.replace(RX, ' antes del ' + txt);
+        else if (/puedes actualizar tu respuesta/i.test(msg)) msg = msg.replace(/puedes actualizar tu respuesta/i, '$& antes del ' + txt);
+        else msg = msg.trim() + ' Puedes cambiar tu respuesta antes del ' + txt + '.';
+        dm.value = msg;
+        B.toast('Fecha agregada al mensaje. Pulsa <b>Guardar cambios</b>.', 'info', 2600);
+      });
+    }
     form.onsubmit = async (e) => {
       e.preventDefault();
       const data = {};
