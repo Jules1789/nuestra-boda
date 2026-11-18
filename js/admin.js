@@ -306,7 +306,7 @@
         (S.selecting ? '<input type="checkbox" class="pickbox"' + (picked.has(g.id) ? ' checked' : '') + '>' : avatar(g)) +
         '<div class="gmain"' + (S.selecting ? '' : ' data-edit="' + g.id + '"') + '><b>' + esc(g.name) + '</b> <span class="pill ' + g.status + '">' + STATUS_LABEL[g.status] + '</span>' +
         (g.source === 'web' ? ' <span class="pill web">web</span>' : '') + (g.change ? ' <span class="pill warn">cambió</span>' : '') +
-        '<div class="gmeta"><span>👥 ' + (g.status === 'si' ? partySize(g) + ' de ' + ms.length + ' asistirán' : g.status === 'no' ? '0 de ' + ms.length : ms.length + (ms.length > 1 ? ' lugares' : ' lugar')) + '</span>' +
+        '<div class="gmeta"><span>💌 ' + esc(B.groupLabel(g)) + '</span><span>👥 ' + (g.status === 'si' ? partySize(g) + ' de ' + ms.length + ' asistirán' : g.status === 'no' ? '0 de ' + ms.length : ms.length + (ms.length > 1 ? ' lugares' : ' lugar')) + '</span>' +
         (g.group ? '<span>🏷 ' + esc(g.group) + '</span>' : '') +
         (tables.length ? '<span>🪑 ' + esc(tables.join(', ')) + '</span>' : '') +
         (g.diet ? '<span>🍽 ' + esc(g.diet) + '</span>' : '') +
@@ -401,8 +401,9 @@
       '<div class="full fam"><span class="lbl">Familia · integrantes de esta invitación</span><div id="famRows"></div>' +
       '<div class="fam-actions"><button type="button" class="btn btn-sm" id="famAdd">＋ Agregar integrante</button></div>' +
       '<small class="muted">El primero es el titular. Marca ✓ quiénes asistirán. “Separar” lo vuelve su propia invitación.</small></div>' +
+      '<label class="full"><span>Nombre en la invitación (cómo se le saluda)</span><input id="eLabel" value="' + esc(v.label || '') + '" placeholder="' + esc(g ? B.groupLabel(Object.assign({}, g, { label: '' })) : 'Ej. Familia Bustos Hernández') + '"><small class="muted">Déjalo vacío para usar el automático (el que se ve en gris).</small></label>' +
       '<label><span>Asistencia</span><select id="eStatus">' + ['pendiente', 'si', 'no'].map((s) => '<option value="' + s + '"' + (v.status === s ? ' selected' : '') + '>' + STATUS_LABEL[s] + '</option>').join('') + '</select></label>' +
-      '<label><span>Categoría (ej. Novia, Novio, Amigos)</span><input id="eGroup" list="grpList" value="' + esc(v.group) + '"><datalist id="grpList">' + groups.map((x) => '<option value="' + esc(x) + '">').join('') + '</datalist></label>' +
+      '<label><span>Familia / grupo (apellidos, ej. Bustos Reyna)</span><input id="eGroup" list="grpList" value="' + esc(v.group) + '"><datalist id="grpList">' + groups.map((x) => '<option value="' + esc(x) + '">').join('') + '</datalist></label>' +
       '<label class="full"><span>Celulares de la familia (separados por coma)</span><input id="ePhone" type="tel" value="' + esc(v.phone) + '" placeholder="Ej. 81 1234 5678, 81 8765 4321"><small class="muted">Con cualquiera de estos números pueden confirmar por toda la familia. Se agregan solos cuando alguien responde.</small></label>' +
       '<label class="full chk"><input type="checkbox" id="eSent"' + (v.invitedAt ? ' checked' : '') + '> Invitación enviada por WhatsApp' + (v.invitedAt ? ' <span class="muted">(' + esc(fmtDate(v.invitedAt)) + ')</span>' : '') + '</label>' +
       '<label class="full"><span>Restricciones alimentarias</span><input id="eDiet" value="' + esc(v.diet) + '"></label>' +
@@ -462,7 +463,7 @@
           if (st === 'si' && !attIdx.length) st = 'no';
           const gid = v.id || B.newId();
           const ng = Object.assign({}, v, {
-            id: gid, name, group: $('#eGroup', m).value.trim(), invited: rows.length, companionNames: names.slice(1).join(', '),
+            id: gid, name, label: $('#eLabel', m).value.trim(), group: $('#eGroup', m).value.trim(), invited: rows.length, companionNames: names.slice(1).join(', '),
             phone: B.phoneList($('#ePhone', m).value).join(', ') || $('#ePhone', m).value.trim(), status: st,
             attendees: attIdx.join(','), companions: Math.max(0, attIdx.length - 1),
             invitedAt: $('#eSent', m).checked ? (v.invitedAt || new Date().toISOString()) : '',
@@ -718,6 +719,13 @@
       if (!s) { s = { name: sec, html: '' }; sections.push(s); }
       const v = S.config[key] == null ? '' : S.config[key];
       if (type === 'hidden') { s.html += '<input type="hidden" name="' + key + '" value="' + esc(v) + '">'; return; }
+      if (type === 'palette') {
+        s.html += '<div class="frow"><span>' + esc(label) + '</span><div class="palettes">' + B.PALETTES.map((pl, i) =>
+          '<button type="button" class="pal" data-pal="' + i + '" title="' + esc(pl.name) + '">' +
+          '<i style="background:' + pl.colorBg + '"></i><i style="background:' + pl.theme + '"></i><i style="background:' + pl.colorNature + '"></i><i style="background:' + pl.colorText + '"></i>' +
+          '<small>' + esc(pl.name) + '</small></button>').join('') + '</div>' + (help ? '<small>' + esc(help) + '</small>' : '') + '</div>';
+        return;
+      }
       if (type === 'image' || type === 'gallery') {
         s.html += '<div class="frow"><span>' + esc(label) + '</span><input type="hidden" name="' + key + '" value="' + esc(v) + '">' +
           '<div class="photo-field" data-photo="' + key + '" data-multi="' + (type === 'gallery' ? '1' : '') + '"></div>' + (help ? '<small>' + esc(help) + '</small>' : '') + '</div>';
@@ -732,10 +740,23 @@
       '<div class="save-bar"><button class="btn btn-primary" type="submit">Guardar cambios</button></div>';
     form.dataset.ready = '1';
     $$('[data-photo]', form).forEach(renderPhotoField);
+    // Paletas: llenan los colores para que los veas; se guardan con "Guardar cambios"
+    const COLOR_KEYS = ['theme', 'colorBg', 'colorCard', 'colorText', 'colorNature'];
+    const previewColors = () => { const o = {}; COLOR_KEYS.forEach((k) => { if (form.elements[k]) o[k] = form.elements[k].value; }); B.applyTheme(o); };
+    $$('[data-pal]', form).forEach((b) => {
+      b.onclick = () => {
+        const pl = B.PALETTES[+b.dataset.pal];
+        COLOR_KEYS.forEach((k) => { if (form.elements[k]) form.elements[k].value = pl[k]; });
+        previewColors();
+        $$('[data-pal]', form).forEach((x) => x.classList.toggle('on', x === b));
+        B.toast('Paleta “' + esc(pl.name) + '” lista. Pulsa <b>Guardar cambios</b> para aplicarla en la web.', 'info', 3500);
+      };
+    });
+    COLOR_KEYS.forEach((k) => { if (form.elements[k]) form.elements[k].addEventListener('input', previewColors); });
     form.onsubmit = async (e) => {
       e.preventDefault();
       const data = {};
-      B.FIELDS.forEach(([, key]) => { data[key] = form.elements[key].value; });
+      B.FIELDS.forEach(([, key]) => { if (key[0] !== '_' && form.elements[key]) data[key] = form.elements[key].value; });
       if (!data.adminPin) { B.toast('La clave no puede quedar vacía', 'warn'); return; }
       const r = await B.api('admin_config', { key: S.key, config: data });
       if (r && r.ok) {

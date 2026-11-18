@@ -11,7 +11,8 @@
 
   async function init() {
     // Enlace personal (?g=) o, si no, la invitación que respondió antes desde este celular
-    const mem = !guestId ? remembered() : null;
+    const saved = remembered();
+    const mem = saved && (!guestId || saved.id === guestId) ? saved : null;
     try {
       const res = await B.api('public', { g: guestId || (mem && mem.id) || '' });
       if (res && res.ok) { cfg = B.withDefaults(res.config); guest = res.guest || null; }
@@ -20,9 +21,78 @@
     }
     render();
     startCountdown();
-    setupRsvp(!!(mem && guest));
+    setupRsvp();
     setupNav();
+    // Ya abrió su invitación antes en este celular: entra directo. Si no, primero su número.
+    if (mem && guest && mem.phone) enterVerified(guest, mem.phone, false);
+    else showGate();
     $('#loading').classList.add('out');
+  }
+
+  /* -------- Puerta: celular antes de abrir la invitación -------- */
+  function showGate() {
+    document.body.classList.add('locked');
+    $('#gate').hidden = false;
+    $('#gateNames').innerHTML = esc(cfg.name1) + '<span class="amp">&amp;</span>' + esc(cfg.name2);
+    $('#gateDate').textContent = B.formatLongDate(cfg);
+    const mem = remembered();
+    if (mem && mem.phone) $('#gPhone').value = mem.phone;
+    ['#gPhone', '#gPhone2', '#gName'].forEach((s) => $(s).addEventListener('input', () => { $(s).closest('.field').classList.remove('error'); $('#gateError').hidden = true; }));
+    $('#gateForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const err = (t) => { const el = $('#gateError'); el.textContent = t; el.hidden = false; };
+      const p1 = B.normPhone($('#gPhone').value), p2 = B.normPhone($('#gPhone2').value);
+      $('#gPhone').closest('.field').classList.toggle('error', !p1);
+      $('#gPhone2').closest('.field').classList.toggle('error', !p2 || p1 !== p2);
+      if (!p1) return err('Escribe tu número de celular a 10 dígitos.');
+      if (p1 !== p2) return err('Los dos números no coinciden. Revísalos, por favor.');
+      const askName = !$('#gNameField').hidden;
+      const name = $('#gName').value.trim();
+      if (askName && !name) { $('#gName').closest('.field').classList.add('error'); return err('Escribe tu nombre completo.'); }
+      const btn = $('#gateBtn');
+      btn.disabled = true; btn.textContent = 'Buscando tu invitación…';
+      try {
+        const r = await B.api('lookup', { g: guestId, phone: p1, name: askName ? name : '' });
+        if (r && r.ok && r.guest) { enterVerified(r.guest, p1, true); return; }
+        if (!askName) { $('#gNameField').hidden = false; $('#gName').focus(); return; }
+        err('No encontramos tu invitación con ese nombre. Escríbelo como viene en tu invitación, o pídeles a los novios tu enlace personal.');
+      } catch (ex) {
+        err('No pudimos conectarnos. Revisa tu internet e inténtalo de nuevo.');
+      } finally {
+        btn.disabled = false; btn.textContent = 'Abrir mi invitación';
+      }
+    };
+    setTimeout(() => $('#gPhone').focus(), 300);
+  }
+
+  // Ya sabemos quién es: personalizamos la página y su confirmación
+  function enterVerified(g, phone, welcome) {
+    guest = g;
+    remember(g.id, phone);
+    personalize();
+    verifyRsvp(phone);
+    $('#gate').hidden = true;
+    if (!welcome) { document.body.classList.remove('locked'); return; }
+    const n = (g.members || []).length || 1;
+    $('#welcomeSeal').textContent = (cfg.name1 || ' ')[0] + '&' + (cfg.name2 || ' ')[0];
+    $('#welcomeName').textContent = B.groupLabel(g);
+    $('#welcomeText').textContent = cfg.welcomeMessage || '';
+    $('#welcomeSeats').textContent = n > 1 ? 'Hemos reservado ' + n + ' lugares para ustedes.' : 'Hemos reservado un lugar especialmente para ti.';
+    $('#welcome').hidden = false;
+    $('#welcomeBtn').onclick = () => { $('#welcome').hidden = true; document.body.classList.remove('locked'); window.scrollTo(0, 0); };
+  }
+
+  // Saludo con su nombre o el de su familia, lugares y cabaña
+  function personalize() {
+    if (!guest) return;
+    const label = B.groupLabel(guest);
+    setText('#heroGreeting', 'Para ' + label);
+    const n = (guest.members || []).length || Math.max(1, guest.invited || 1);
+    const note = $('#personalNote');
+    note.hidden = false;
+    note.innerHTML = (n > 1 ? 'Queridos' : 'Querid@') + ' <b>' + esc(label) + '</b>: ' +
+      (n > 1 ? 'hemos reservado <b>' + n + ' lugares</b> para ustedes.' : 'hemos reservado <b>un lugar</b> especialmente para ti.');
+    if (guest.cabin) { const c = $('#dCabin'); c.hidden = false; c.textContent = '🏡 Tu cabaña: ' + guest.cabin; $('#cardLodging').hidden = false; }
   }
 
   function setText(sel, txt) { const el = $(sel); if (el) el.textContent = txt || ''; }
@@ -66,16 +136,6 @@
       probe.src = cfg.heroImage;
     }
 
-    // Saludo personalizado
-    if (guest) {
-      const first = guest.name.split(' ')[0];
-      setText('#heroGreeting', first + ', ¡nos casamos!');
-      const lugares = Math.max(1, guest.invited || 1);
-      const note = $('#personalNote');
-      note.hidden = false;
-      note.innerHTML = 'Querid@ <b>' + esc(guest.name) + '</b>: ' +
-        (lugares > 1 ? 'hemos reservado <b>' + lugares + ' lugares</b> para ti y los tuyos.' : 'hemos reservado <b>un lugar</b> especialmente para ti.');
-    }
 
     const places = B.places(cfg);
     setText('#message', cfg.message);
@@ -86,10 +146,9 @@
       (p.time ? '<p class="time">' + esc(p.time) + '</p>' : '') + '<p>' + esc(p.name || '') + '</p><p class="muted">' + esc(p.address || '') + '</p>' +
       '<a class="btn btn-ghost btn-sm" target="_blank" rel="noopener" href="' + esc(B.mapsLink(p)) + '">📍 Cómo llegar</a></article>').join('');
     setText('#dDress', cfg.dressCode); showIf('#cardDress', cfg.dressCode);
-    setText('#dLodging', cfg.lodging); showIf('#cardLodging', cfg.lodging || (guest && guest.cabin));
+    setText('#dLodging', cfg.lodging); showIf('#cardLodging', cfg.lodging);
     setText('#dInstr', cfg.instructions); showIf('#cardInstr', cfg.instructions);
     setText('#dGifts', cfg.gifts); showIf('#cardGifts', cfg.gifts);
-    if (guest && guest.cabin) { const c = $('#dCabin'); c.hidden = false; c.textContent = '🏡 Tu cabaña: ' + guest.cabin; }
 
     // Programa
     const lines = String(cfg.itinerary || '').split('\n').map((l) => l.trim()).filter(Boolean);
@@ -204,8 +263,8 @@
     xs.forEach((x, i) => {
       const sc = 0.75 + r() * 0.9;
       const y = 362 + Math.sin(x / 140) * 8 + r() * 10;
-      const shade = ['#3f4a39', '#46523f', '#384233'][Math.floor(r() * 3)];
-      html += '<g transform="translate(' + x.toFixed(0) + ' ' + y.toFixed(0) + ') scale(' + sc.toFixed(2) + ')"><g class="pine-g" style="--i:' + i + '"><use href="#pineShape" fill="' + shade + '"/></g></g>';
+      const shade = ['var(--n-pine)', 'var(--n-front)', 'var(--n-pine)'][Math.floor(r() * 3)];
+      html += '<g transform="translate(' + x.toFixed(0) + ' ' + y.toFixed(0) + ') scale(' + sc.toFixed(2) + ')"><g class="pine-g" style="--i:' + i + '"><use href="#pineShape" style="fill:' + shade + '"/></g></g>';
     });
     g.insertAdjacentHTML('beforeend', html);
   }
@@ -216,14 +275,14 @@
   function dividerSvg(kind, seed) {
     const r = rand(seed * 31 + 3);
     let h = '<svg class="divider" viewBox="0 0 1200 130" preserveAspectRatio="xMidYMax meet" aria-hidden="true">';
-    const pine = (x, y, s, i, c) => '<g transform="translate(' + x.toFixed(0) + ' ' + y.toFixed(0) + ') scale(' + s.toFixed(2) + ')"><g class="el" style="--i:' + i + '"><g class="sway" style="--i:' + i + '"><path d="' + PINE + '" fill="' + c + '"/><rect x="-2.5" y="4" width="5" height="8" fill="#6b5a44"/></g></g></g>';
+    const pine = (x, y, s, i, c) => '<g transform="translate(' + x.toFixed(0) + ' ' + y.toFixed(0) + ') scale(' + s.toFixed(2) + ')"><g class="el" style="--i:' + i + '"><g class="sway" style="--i:' + i + '"><path d="' + PINE + '" style="fill:' + c + '"/><rect x="-2.5" y="4" width="5" height="8" fill="#6b5a44"/></g></g></g>';
     if (kind === 0) {
       // Bosque de pinos sobre una loma
       h += '<path class="ground" d="M0 122 Q300 104 600 116 T1200 112 L1200 130 L0 130Z"/>';
       let i = 0;
       for (let x = 300; x < 900; x += 26 + r() * 30) {
         const k = Math.sin(((x - 300) / 600) * Math.PI);
-        h += pine(x, 118 - k * 8, 0.8 + k * 0.7 + r() * 0.2, i++, r() < 0.5 ? '#5f6b56' : '#7d8b72');
+        h += pine(x, 118 - k * 8, 0.8 + k * 0.7 + r() * 0.2, i++, r() < 0.5 ? 'var(--n-pine)' : 'var(--n-pine2)');
       }
     } else if (kind === 1) {
       // Cerca de rancho con pinos a los lados
@@ -231,7 +290,7 @@
       let i = 0;
       for (let x = 380; x <= 820; x += 55) h += '<g class="el post" style="--i:' + i++ + '"><rect x="' + (x - 3) + '" y="86" width="6" height="34" rx="1" fill="#8a6b4a"/></g>';
       h += '<rect class="rail" style="--i:2" x="380" y="93" width="440" height="4" rx="2" fill="#a07e58"/><rect class="rail" style="--i:4" x="380" y="106" width="440" height="4" rx="2" fill="#a07e58"/>';
-      [[290, 1.5], [336, 1.1], [870, 1.35], [914, 0.95], [250, 0.9], [955, 1.2]].forEach(([x, s], k) => { h += pine(x, 120, s, k + 3, '#5f6b56'); });
+      [[290, 1.5], [336, 1.1], [870, 1.35], [914, 0.95], [250, 0.9], [955, 1.2]].forEach(([x, s], k) => { h += pine(x, 120, s, k + 3, 'var(--n-pine)'); });
     } else {
       // Cordillera con sol y pinos al frente
       h += '<g class="sunline"><circle cx="760" cy="62" r="18" fill="#f1d7a2" opacity=".8"/></g>';
@@ -239,7 +298,7 @@
       h += '<path class="ridge-fill" d="' + ridge + ' Z"/><path class="ridge" d="' + ridge + '"/>';
       h += '<path class="ground" d="M200 124 Q600 112 1000 124 L1000 130 L200 130Z"/>';
       let i = 0;
-      [430, 470, 520, 690, 730, 770].forEach((x) => { h += pine(x, 122, 0.8 + r() * 0.45, i++, '#5f6b56'); });
+      [430, 470, 520, 690, 730, 770].forEach((x) => { h += pine(x, 122, 0.8 + r() * 0.45, i++, 'var(--n-pine)'); });
     }
     return h + '</svg>';
   }
@@ -364,14 +423,17 @@
     }
   }
 
-  function setupRsvp(fromMemory) {
+  // Ya verificó su celular en la puerta: la confirmación abre directo en las casillas de su familia
+  function verifyRsvp(phone) {
+    phoneOk = phone;
+    $('#fPhone').value = phone; $('#fPhone2').value = phone;
+    $('#rsvpForm').hidden = false; $('#rsvpDone').hidden = true;
+    showAnswerStep(guest);
+    if (guest.status === 'si' || guest.status === 'no') showDone(false);
+  }
+
+  function setupRsvp() {
     const form = $('#rsvpForm');
-    const mem = remembered();
-    // Enlace personal: ya sabemos su invitación, solo falta su celular
-    if (guest && guestId) {
-      $('#phoneHelp').innerHTML = 'Hola <b>' + esc(guest.name.split(' ')[0]) + '</b>: escribe tu celular para confirmar. Con él podrás regresar y cambiar tu respuesta.';
-    }
-    if (mem && mem.phone) { $('#fPhone').value = mem.phone; }
     $('#btnContinue').onclick = continuePhone;
     ['#fPhone', '#fPhone2', '#fName'].forEach((s) => $(s).addEventListener('input', () => $(s).closest('.field').classList.remove('error')));
     $('#fPhone2').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); continuePhone(); } });
@@ -381,12 +443,6 @@
       if ($('#noneCheck').checked) $$('#memberChecks input[type=checkbox]').forEach((b) => { b.checked = false; });
       syncChecks();
     });
-    // Ya respondió desde este celular: le mostramos su respuesta (con botón para cambiarla)
-    if (fromMemory && guest && mem && mem.phone) {
-      phoneOk = mem.phone;
-      showAnswerStep(guest);
-      if (guest.status === 'si' || guest.status === 'no') showDone();
-    }
 
     form.addEventListener('submit', async (ev) => {
       ev.preventDefault();

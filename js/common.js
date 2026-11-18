@@ -34,6 +34,11 @@
     gallery: '',
     preweddingVideos: '',
     theme: '#9a7b4f',
+    colorBg: '#f7f2ea',
+    colorText: '#2f2a24',
+    colorCard: '#fffdf9',
+    colorNature: '#5f6b56',
+    welcomeMessage: 'Con todo nuestro cariño queremos compartir contigo uno de los días más importantes de nuestra vida. Tu presencia hará este momento aún más especial.',
     siteUrl: '',
     rsvpDeadline: '',
     hashtag: '',
@@ -51,8 +56,14 @@
     ['Pareja', 'message', 'Mensaje de bienvenida', 'textarea'],
     ['Pareja', 'heroImage', 'Foto de portada', 'image', 'Se muestra de fondo al principio, con las montañas animadas encima. Vacío = fondo claro con montañas.'],
     ['Pareja', 'heroFocus', '', 'hidden'],
-    ['Pareja', 'theme', 'Color principal', 'color'],
     ['Pareja', 'hashtag', 'Hashtag', 'text'],
+    ['Pareja', 'welcomeMessage', 'Mensaje al abrir la invitación', 'textarea', 'Aparece justo después de que el invitado escribe su celular, con su nombre o el de su familia arriba.'],
+    ['Colores', '_palette', 'Paletas listas', 'palette', 'Toca una paleta para probarla; después ajusta cualquier color y pulsa Guardar.'],
+    ['Colores', 'theme', 'Color principal (botones y detalles)', 'color'],
+    ['Colores', 'colorBg', 'Color de fondo', 'color'],
+    ['Colores', 'colorCard', 'Color de las tarjetas', 'color'],
+    ['Colores', 'colorText', 'Color del texto', 'color'],
+    ['Colores', 'colorNature', 'Color de montañas y pinos', 'color'],
     ['Nuestra historia', 'storyTitle', 'Título de la sección', 'text'],
     ['Nuestra historia', 'story', 'Nuestra historia', 'textarea', 'Cuéntales cómo se conocieron, la pedida, lo que quieran. Cada renglón es un párrafo. Si lo dejas vacío (y sin fotos), la sección no aparece.'],
     ['Nuestra historia', 'gallery', 'Fotos', 'gallery', 'Se ven en una galería; tus invitados pueden tocarlas para verlas en grande.'],
@@ -124,6 +135,28 @@
   }
 
   function partySize(g) { return attendingIdx(g).length; }
+
+  // A quién va dirigida la invitación: "Familia Bustos Hernández", "Ilse y Omar" o "Ángela Juárez"
+  function groupLabel(g) {
+    if (!g) return '';
+    if (String(g.label || '').trim()) return String(g.label).trim();
+    const ms = members(g);
+    // La columna "Grupo / Familia" con apellidos (p. ej. "Bustos Reyna") manda: "Familia Bustos Reyna".
+    // Si trae una categoría ("Novia (Yami)", "Amigos del novio…") no se usa para el saludo.
+    const fam = String(g.group || '').trim().replace(/^familia\s+/i, '');
+    const famOk = !!fam && !/novi[oa]|amig|lado|\(|-|\d/i.test(fam);
+    const nm = String(g.name || '').trim();
+    if (ms.length <= 1) return famOk && nm.split(/\s+/).length === 1 ? nm + ' ' + fam : nm;
+    if (famOk) return 'Familia ' + fam;
+    const named = ms.filter((n) => !isPlaceholderName(n));
+    if (named.length === 1) return nm + (ms.length > 2 ? ' y acompañantes' : ' y acompañante');
+    if (ms.length === 2) return named[0] + ' y ' + named[1];
+    const w = nm.replace(/\(.*?\)/g, '').trim().split(/\s+/);
+    if (w.length >= 3) return 'Familia ' + w.slice(-2).join(' ');
+    if (w.length === 2) return 'Familia ' + w[1];
+    return nm + ' y familia';
+  }
+
 
   // Celulares: se comparan por los últimos 10 dígitos (México). Un grupo puede tener varios.
   function normPhone(p) { const d = String(p || '').replace(/\D/g, ''); return d.length >= 10 ? d.slice(-10) : ''; }
@@ -358,9 +391,26 @@
     return axis(W, sw, fx, tx).toFixed(1) + '% ' + axis(H, sh, fy, ty).toFixed(1) + '%';
   }
 
+  // Paletas listas para elegir en Ajustes
+  const PALETTES = [
+    { name: 'Bosque', theme: '#9a7b4f', colorBg: '#f7f2ea', colorCard: '#fffdf9', colorText: '#2f2a24', colorNature: '#5f6b56' },
+    { name: 'Terracota', theme: '#b5653f', colorBg: '#f8efe6', colorCard: '#fffaf5', colorText: '#3a2a22', colorNature: '#7a6a4f' },
+    { name: 'Vino', theme: '#7b2d3b', colorBg: '#f6eeee', colorCard: '#fffafa', colorText: '#2e2024', colorNature: '#4f5d4b' },
+    { name: 'Azul noche', theme: '#2f4a6b', colorBg: '#eef2f6', colorCard: '#fbfdff', colorText: '#1e2a38', colorNature: '#3f5a5a' },
+    { name: 'Rosa palo', theme: '#b77b86', colorBg: '#faf1f1', colorCard: '#fffafa', colorText: '#3b2c30', colorNature: '#7f8f78' },
+    { name: 'Lavanda', theme: '#7c6a9e', colorBg: '#f4f1f8', colorCard: '#fdfcff', colorText: '#2c2738', colorNature: '#5f6b7a' },
+    { name: 'Olivo y oro', theme: '#a8892f', colorBg: '#f3f1e7', colorCard: '#fffef8', colorText: '#2a2a1f', colorNature: '#5b6338' }
+  ];
+
   function applyTheme(cfg) {
-    const c = cfg.theme || DEFAULT_CONFIG.theme;
-    document.documentElement.style.setProperty('--accent', c);
+    const r = document.documentElement.style;
+    const ok = (c) => /^#[0-9a-f]{6}$/i.test(String(c || '').trim());
+    const set = (v, c, d) => r.setProperty(v, ok(c) ? c.trim() : d);
+    set('--accent', cfg.theme, DEFAULT_CONFIG.theme);
+    set('--bg', cfg.colorBg, DEFAULT_CONFIG.colorBg);
+    set('--card', cfg.colorCard, DEFAULT_CONFIG.colorCard);
+    set('--ink', cfg.colorText, DEFAULT_CONFIG.colorText);
+    set('--nature', cfg.colorNature, DEFAULT_CONFIG.colorNature);
   }
 
   /* ---------------- Toasts ---------------- */
@@ -422,7 +472,7 @@
     const ok = (o) => Object.assign({ ok: true }, o || {});
     const isSeated = (id) => Object.keys(db.plan.seats || {}).some((k) => k.split('#')[0] === id);
     // Lo que el invitado puede ver de su invitación (igual que Apps Script): sin teléfonos ni notas
-    const pub = (g) => g && { id: g.id, name: g.name, invited: g.invited, status: g.status, members: members(g), attendees: attendingIdx(g).join(','), diet: g.diet, comments: g.comments, song: g.song, cabin: g.cabin };
+    const pub = (g) => g && { id: g.id, name: g.name, label: groupLabel(g), invited: g.invited, status: g.status, members: members(g), attendees: attendingIdx(g).join(','), diet: g.diet, comments: g.comments, song: g.song, cabin: g.cabin };
     const find = (p) => {
       const tel = normPhone(p.phone), n = norm(p.name);
       return (p.g && db.guests.find((x) => x.id === p.g)) ||
@@ -508,7 +558,7 @@
   }
 
   window.Boda = {
-    DEFAULT_CONFIG, FIELDS, STATUS_LABEL, $, $$, esc, norm, newId, splitNames, partySize, memberName, members, attendingIdx, isPlaceholderName, normPhone, phoneList, initials, hueOf,
+    DEFAULT_CONFIG, FIELDS, STATUS_LABEL, $, $$, esc, norm, newId, splitNames, partySize, memberName, members, attendingIdx, isPlaceholderName, normPhone, phoneList, groupLabel, PALETTES, initials, hueOf,
     zonedToDate, eventDates, formatLongDate, formatShortDate, formatTime,
     googleCalUrl, outlookUrl, icsText, icsDataUrl,
     mapsLink, wazeLink, appleMapsLink, mapEmbed, mapQuery, places, fmtHour,

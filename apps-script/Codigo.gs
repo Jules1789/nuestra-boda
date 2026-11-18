@@ -45,7 +45,8 @@ var COLUMNAS = [
   ['updated', 'Última actualización'],
   ['change', 'Cambio de respuesta'],
   ['notes', 'Notas privadas'],
-  ['attendees', 'Asistentes (posición en el grupo)']
+  ['attendees', 'Asistentes (posición en el grupo)'],
+  ['label', 'Nombre en la invitación']
 ];
 
 var ESTADO_A_TEXTO = { si: 'Confirmado', no: 'No asiste', pendiente: 'Pendiente' };
@@ -370,6 +371,26 @@ function asistentesIdx_(g) {
 
 function personas_(g) { return asistentesIdx_(g).length; }
 
+// Cómo se dirige la invitación: "Familia Bustos Hernández", "Ilse Hernández y Omar Martínez" o "Ángela Juárez".
+// Si escribieron uno en el panel ("Nombre en la invitación"), se usa ese.
+function etiqueta_(g) {
+  if (String(g.label || '').trim()) return String(g.label).trim();
+  var ms = miembros_(g);
+  // La columna "Grupo / Familia" con apellidos (p. ej. "Bustos Reyna") manda: "Familia Bustos Reyna".
+  var fam = String(g.group || '').trim().replace(/^familia\s+/i, '');
+  var famOk = !!fam && !/novi[oa]|amig|lado|\(|-|\d/i.test(fam);
+  var nm = String(g.name || '').trim();
+  if (ms.length <= 1) return famOk && nm.split(/\s+/).length === 1 ? nm + ' ' + fam : nm;
+  if (famOk) return 'Familia ' + fam;
+  var nombrados = ms.filter(function (n) { return !esMarcador_(n); });
+  if (nombrados.length === 1) return nm + (ms.length > 2 ? ' y acompañantes' : ' y acompañante');
+  if (ms.length === 2) return nombrados[0] + ' y ' + nombrados[1];
+  var w = nm.replace(/\(.*?\)/g, '').trim().split(/\s+/);
+  if (w.length >= 3) return 'Familia ' + w.slice(-2).join(' ');
+  if (w.length === 2) return 'Familia ' + w[1];
+  return nm + ' y familia';
+}
+
 // Celulares: se comparan por los últimos 10 dígitos. Un grupo puede tener varios (separados por coma).
 function normTel_(t) { var d = String(t || '').replace(/\D/g, ''); return d.length >= 10 ? d.slice(-10) : ''; }
 function telefonos_(s) { return String(s || '').split(/[,;\/\n]+/).map(normTel_).filter(String); }
@@ -381,7 +402,7 @@ function telefonos_(s) { return String(s || '').split(/[,;\/\n]+/).map(normTel_)
 // Lo que un invitado puede ver de su propia invitación (sin teléfonos ni notas privadas)
 function invitadoPublico_(g) {
   return {
-    id: g.id, name: g.name, invited: g.invited, status: g.status, members: miembros_(g),
+    id: g.id, name: g.name, label: etiqueta_(g), invited: g.invited, status: g.status, members: miembros_(g),
     attendees: asistentesIdx_(g).join(','), diet: g.diet, comments: g.comments, song: g.song, cabin: g.cabin
   };
 }

@@ -316,3 +316,10 @@ code { background: var(--bg); padding: 1px 6px; border-radius: 6px; font-size: .
 .merge-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--ink); color: #fff; padding: 8px 12px; border-radius: 12px; margin-bottom: 8px; font-size: .88rem; }
 .merge-bar span { flex: 1; }
 .merge-bar .btn:not(.btn-primary) { background: rgba(255, 255, 255, .15); color: #fff; border-color: transparent; }
+
+/* Paletas de color */
+.palettes { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.pal { border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 8px; cursor: pointer; display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
+.pal i { height: 22px; border-radius: 5px; border: 1px solid rgba(0, 0, 0, .08); }
+.pal small { grid-column: 1 / -1; font-size: .78rem; margin-top: 4px; }
+.pal.on { border-color: var(--ink); box-shadow: 0 0 0 2px var(--ink) inset; }
