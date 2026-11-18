@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+  <title>Panel de la boda</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#f7f2ea">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='24' cy='36' r='14' fill='none' stroke='%239a7b4f' stroke-width='5'/%3E%3Ccircle cx='40' cy='36' r='14' fill='none' stroke='%239a7b4f' stroke-width='5'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+  <!-- Acceso -->
+  <section id="login" class="login">
+    <form id="loginForm" class="login-card" onsubmit="return false">
+      <p id="loadWarn" hidden style="background:#fbeeec;color:#8a3a33;border-radius:10px;padding:10px;font-size:.9rem">⚠️ El panel no terminó de cargar. Ábrelo desde la dirección de la web (por ejemplo <b>…/admin.html</b> en tu navegador), no como archivo suelto.</p>
+      <div class="rings-ico">⚭</div>
+      <h1 id="loginTitle">Panel de organizadores</h1>
+      <p class="muted">Solo para los novios. Aquí ves confirmaciones, invitados y el plano de mesas.</p>
+      <input id="pin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="Clave" required>
+      <button class="btn btn-primary btn-block" type="submit">Entrar</button>
+      <p class="muted small" id="demoHint" hidden>Modo demostración · clave: <b>1234</b></p>
+    </form>
+  </section>
+
+  <!-- App -->
+  <div id="app" hidden>
+    <header class="topbar">
+      <div class="title"><span class="logo" id="logo">♥</span><div><b id="appTitle">Nuestra boda</b><small id="syncState">Conectando…</small></div></div>
+      <div class="top-actions">
+        <a class="icon-btn" id="openSite" target="_blank" rel="noopener" title="Ver la web de la boda">🌐</a>
+        <button class="icon-btn" id="btnRefresh" title="Actualizar">⟳</button>
+        <button class="icon-btn" id="btnLogout" title="Salir">⎋</button>
+      </div>
+    </header>
+
+    <nav class="tabs" id="tabs">
+      <button data-tab="resumen" class="active"><i>◎</i><span>Resumen</span></button>
+      <button data-tab="invitados"><i>☰</i><span>Invitados</span><em class="badge" id="badgeInv" hidden></em></button>
+      <button data-tab="mesas"><i>◍</i><span>Mesas</span><em class="badge" id="badgeMesas" hidden></em></button>
+      <button data-tab="compartir"><i>↗</i><span>Compartir</span></button>
+      <button data-tab="ajustes"><i>⚙</i><span>Ajustes</span></button>
+    </nav>
+
+    <main id="main">
+      <!-- RESUMEN -->
+      <section class="tab" id="tab-resumen">
+        <div class="kpis" id="kpis"></div>
+        <div class="grid2">
+          <div class="panel"><h3>Respuestas cambiadas</h3><div id="changesList" class="list"></div></div>
+          <div class="panel"><h3>Últimas confirmaciones</h3><div id="recentList" class="list"></div></div>
+          <div class="panel"><h3>Restricciones alimentarias</h3><div id="dietList" class="list"></div></div>
+          <div class="panel"><h3>Mensajes y canciones</h3><div id="msgList" class="list"></div></div>
+        </div>
+      </section>
+
+      <!-- INVITADOS -->
+      <section class="tab" id="tab-invitados" hidden>
+        <div class="toolbar">
+          <input type="search" id="gSearch" placeholder="Buscar por nombre, grupo, teléfono…">
+          <div class="tb-buttons">
+            <button class="btn btn-primary" id="btnAddGuest">＋ Invitado</button>
+            <button class="btn" id="btnPaste">📋 Pegar lista</button>
+            <div class="dropdown">
+              <button class="btn" id="btnExport">⇩ Exportar</button>
+              <div class="menu" id="exportMenu" hidden>
+                <button data-exp="xlsx">Excel (.xlsx)</button>
+                <button data-exp="pdf">PDF</button>
+                <button data-exp="csv">CSV</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="filters" id="gFilters">
+          <button data-f="all" class="on">Todos</button>
+          <button data-f="si">Confirmados</button>
+          <button data-f="pendiente">Pendientes</button>
+          <button data-f="no">No asisten</button>
+          <button data-f="diet">Con restricción</button>
+          <button data-f="change">Cambios</button>
+          <button data-f="unsent">Sin invitación enviada</button>
+          <select id="gGroupFilter"><option value="">Todos los grupos</option></select>
+        </div>
+        <p class="muted small" id="gCount"></p>
+        <div id="guestList" class="guest-list"></div>
+      </section>
+
+      <!-- MESAS -->
+      <section class="tab tab-full" id="tab-mesas" hidden>
+        <div id="plano-root" class="plano"></div>
+      </section>
+
+      <!-- COMPARTIR -->
+      <section class="tab" id="tab-compartir" hidden>
+        <div class="panel">
+          <h3>Tu enlace de boda</h3>
+          <div class="link-box"><input id="siteLink" readonly><button class="btn btn-primary" id="copyLink">Copiar</button></div>
+          <p class="muted small">Cada invitado también tiene su propio enlace personalizado (lo saluda por su nombre y sabe cuántos lugares tiene).</p>
+          <div class="share-row" id="shareRowAdmin"></div>
+        </div>
+        <div class="panel">
+          <h3>Enviar invitaciones por WhatsApp</h3>
+          <p class="muted small">Un toque abre WhatsApp con el mensaje y el enlace personal ya escritos. Se marca como “enviada”.</p>
+          <div class="filters" id="sendFilters">
+            <button data-s="unsent" class="on">Sin enviar</button>
+            <button data-s="pendiente">Sin responder</button>
+            <button data-s="all">Todos</button>
+          </div>
+          <div id="sendList" class="list"></div>
+        </div>
+      </section>
+
+      <!-- AJUSTES -->
+      <section class="tab" id="tab-ajustes" hidden>
+        <div class="panel" id="connPanel"></div>
+        <form id="settingsForm" class="settings"></form>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal genérico -->
+  <div class="modal" id="modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true">
+      <button class="modal-x" id="modalX" aria-label="Cerrar">✕</button>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+  <div id="toasts"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" defer></script>
+  <script src="js/config.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/plano.js"></script>
+  <script src="js/admin.js"></script>
+  <script>
+    // Si los archivos del panel no cargaron (por ejemplo, al abrirlo como archivo suelto), avisamos en vez de quedarnos en blanco
+    if (!window.Admin) { var w = document.getElementById('loadWarn'); if (w) w.hidden = false; }
+  </script>
+</body>
+</html>
