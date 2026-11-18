@@ -48,7 +48,7 @@ h1, h2, h3 { font-family: var(--serif); font-weight: 500; margin: 0; }
   radial-gradient(ellipse at 80% 30%, rgba(244, 217, 166, .35), transparent 55%),
   linear-gradient(180deg, #fbf8f2, #f1ebe0 70%, var(--bg)); background-size: cover; background-position: center; transform-origin: center; }
 .hero.has-photo .hero-bg { animation: kenburns 30s ease-in-out infinite alternate; }
-@keyframes kenburns { from { transform: scale(1.04); } to { transform: scale(1.14) translate(-1.5%, -1%); } }
+@keyframes kenburns { from { transform: scale(1); } to { transform: scale(1.06); } }
 .hero-shade { position: absolute; inset: 0; z-index: -2; pointer-events: none; }
 .hero.has-photo .hero-shade { background: linear-gradient(180deg, rgba(20, 14, 6, .45), rgba(20, 14, 6, .25) 45%, rgba(20, 14, 6, .5)); }
 .hero.has-photo { color: #fff; }

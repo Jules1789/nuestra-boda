@@ -285,3 +285,16 @@ code { background: var(--bg); padding: 1px 6px; border-radius: 6px; font-size: .
 .ph.add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; border-style: dashed; color: var(--muted); }
 .ph.add span { font-size: 1.8rem; line-height: 1; color: var(--accent); }
 .photo-field.busy { opacity: .5; pointer-events: none; }
+
+/* Enfoque de la foto de portada */
+.focus-ui { margin-top: 12px; padding: 12px; border: 1px dashed var(--line); border-radius: 12px; background: #fff; }
+.focus-ui p { margin: 0 0 8px; }
+.focus-pick { position: relative; display: inline-block; max-width: 100%; cursor: crosshair; }
+.focus-pick img { display: block; max-width: 100%; max-height: 320px; border-radius: 10px; }
+.focus-dot { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; border: 3px solid #fff; background: rgba(154, 123, 79, .55); box-shadow: 0 0 0 2px var(--accent), 0 2px 8px rgba(0, 0, 0, .4); pointer-events: none; }
+.focus-prev { display: flex; gap: 14px; align-items: flex-end; margin-top: 12px; flex-wrap: wrap; }
+.focus-prev figure { margin: 0; text-align: center; }
+.focus-prev figcaption { font-size: .78rem; color: var(--muted); margin-top: 4px; }
+.fp { background-size: cover; background-repeat: no-repeat; border-radius: 8px; border: 1px solid var(--line); }
+.fp.desk { width: 200px; height: 112px; }
+.fp.phone { width: 62px; height: 112px; }

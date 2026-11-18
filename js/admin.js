@@ -574,6 +574,7 @@
       let s = sections.find((x) => x.name === sec);
       if (!s) { s = { name: sec, html: '' }; sections.push(s); }
       const v = S.config[key] == null ? '' : S.config[key];
+      if (type === 'hidden') { s.html += '<input type="hidden" name="' + key + '" value="' + esc(v) + '">'; return; }
       if (type === 'image' || type === 'gallery') {
         s.html += '<div class="frow"><span>' + esc(label) + '</span><input type="hidden" name="' + key + '" value="' + esc(v) + '">' +
           '<div class="photo-field" data-photo="' + key + '" data-multi="' + (type === 'gallery' ? '1' : '') + '"></div>' + (help ? '<small>' + esc(help) + '</small>' : '') + '</div>';
@@ -648,6 +649,38 @@
     S.config[key] = value;
   }
 
+  // Punto de enfoque de la portada: tocas las caras y la foto se recorta alrededor de ese punto
+  function drawFocus(box, url) {
+    const form = $('#settingsForm');
+    const input = form.elements.heroFocus;
+    const cur = (input && input.value) || S.config.heroFocus || '50% 30%';
+    const [fx, fy] = cur.split(/\s+/);
+    const bg = 'background-image:url(&quot;' + esc(url) + '&quot;);background-position:' + esc(cur);
+    box.insertAdjacentHTML('beforeend',
+      '<div class="focus-ui"><p class="small"><b>¿Se cortan las caras?</b> Toca en la foto justo entre sus caras: la portada se acomodará para que siempre se vean.</p>' +
+      '<div class="focus-pick"><img src="' + esc(url) + '" alt="Foto de portada"><span class="focus-dot" style="left:' + esc(fx) + ';top:' + esc(fy) + '"></span></div>' +
+      '<div class="focus-prev"><figure><div class="fp desk" style="' + bg + '"></div><figcaption>Computadora</figcaption></figure>' +
+      '<figure><div class="fp phone" style="' + bg + '"></div><figcaption>Celular</figcaption></figure></div></div>');
+    const img = $('.focus-pick img', box);
+    // Las vistas previas usan el mismo cálculo que la web (caras centradas arriba de las montañas)
+    const placePreviews = (val) => {
+      if (!img.naturalWidth) return;
+      $$('.fp', box).forEach((d) => { d.style.backgroundPosition = B.focusPosition(val, img.naturalWidth, img.naturalHeight, d.clientWidth, d.clientHeight, 0.5, 0.36); });
+    };
+    if (img.complete) placePreviews(cur); else img.onload = () => placePreviews(cur);
+    img.onclick = async (e) => {
+      const r = img.getBoundingClientRect();
+      const x = Math.round(((e.clientX - r.left) / r.width) * 100);
+      const y = Math.round(((e.clientY - r.top) / r.height) * 100);
+      const val = Math.max(0, Math.min(100, x)) + '% ' + Math.max(0, Math.min(100, y)) + '%';
+      if (input) input.value = val;
+      $('.focus-dot', box).style.left = x + '%';
+      $('.focus-dot', box).style.top = y + '%';
+      placePreviews(val);
+      try { await savePhotoConfig('heroFocus', val); B.toast('Enfoque guardado ✓ Ya se ve así en la web', 'ok', 2200); } catch (err) { B.toast('No se pudo guardar el enfoque', 'error'); }
+    };
+  }
+
   function renderPhotoField(box) {
     const key = box.dataset.photo, multi = !!box.dataset.multi;
     const hidden = $('input[name="' + key + '"]', box.parentNode);
@@ -660,6 +693,7 @@
           '<button type="button" class="ph-btn del" data-del="' + i + '" title="Quitar">✕</button></div>').join('') +
         ((multi || !items.length) ? '<label class="ph add"><input type="file" accept="image/*"' + (multi ? ' multiple' : '') + ' hidden><span>＋</span><small>' + (multi ? 'Agregar fotos' : 'Subir foto') + '</small></label>' : '') +
         '</div>' + (!multi && items.length ? '<label class="btn btn-sm" style="margin-top:8px">Cambiar foto<input type="file" accept="image/*" hidden></label>' : '');
+      if (key === 'heroImage' && items.length) drawFocus(box, items[0]);
       $$('input[type=file]', box).forEach((inp) => {
         inp.onchange = async () => {
           const files = Array.from(inp.files || []);

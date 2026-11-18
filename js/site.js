@@ -44,6 +44,24 @@
     if (cfg.heroImage) {
       $('.hero').classList.add('has-photo');
       $('#heroBg').style.backgroundImage = 'url("' + cfg.heroImage.replace(/"/g, '%22') + '")';
+      // Punto de enfoque elegido en el panel (normalmente las caras) para que no se corten
+      const focus = /^\d{1,3}% \d{1,3}%$/.test(cfg.heroFocus || '') ? cfg.heroFocus : '50% 30%';
+      const bgEl = $('#heroBg');
+      bgEl.style.backgroundPosition = focus;
+      bgEl.style.transformOrigin = focus;
+      // Con el tamaño real de la foto, centramos las caras en la zona visible (arriba de las montañas)
+      const probe = new Image();
+      probe.onload = () => {
+        const place = () => {
+          const r = bgEl.getBoundingClientRect();
+          const pos = B.focusPosition(focus, probe.naturalWidth, probe.naturalHeight, r.width, r.height, 0.5, 0.36);
+          bgEl.style.backgroundPosition = pos;
+          bgEl.style.transformOrigin = pos;
+        };
+        place();
+        window.addEventListener('resize', place, { passive: true });
+      };
+      probe.src = cfg.heroImage;
     }
 
     // Saludo personalizado

@@ -28,6 +28,7 @@
     playlistUrl: '',
     videoUrl: '',
     heroImage: '',
+    heroFocus: '50% 30%',
     storyTitle: 'Nuestra historia',
     story: '',
     gallery: '',
@@ -49,6 +50,7 @@
     ['Pareja', 'name2', 'Nombre 2', 'text'],
     ['Pareja', 'message', 'Mensaje de bienvenida', 'textarea'],
     ['Pareja', 'heroImage', 'Foto de portada', 'image', 'Se muestra de fondo al principio, con las montañas animadas encima. Vacío = fondo claro con montañas.'],
+    ['Pareja', 'heroFocus', '', 'hidden'],
     ['Pareja', 'theme', 'Color principal', 'color'],
     ['Pareja', 'hashtag', 'Hashtag', 'text'],
     ['Nuestra historia', 'storyTitle', 'Título de la sección', 'text'],
@@ -317,6 +319,22 @@
     }
   }
 
+  // Calcula background-position para que el punto elegido (fx, fy en %) quede en (tx, ty) de la caja,
+  // con la foto cubriendo toda la caja (como background-size: cover).
+  function focusPosition(focus, iw, ih, W, H, tx = 0.5, ty = 0.5) {
+    const m = String(focus || '').match(/(\d+(?:\.\d+)?)%\s+(\d+(?:\.\d+)?)%/);
+    const fx = m ? +m[1] / 100 : 0.5, fy = m ? +m[2] / 100 : 0.3;
+    if (!iw || !ih || !W || !H) return Math.round(fx * 100) + '% ' + Math.round(fy * 100) + '%';
+    const s = Math.max(W / iw, H / ih);
+    const sw = iw * s, sh = ih * s;
+    const axis = (box, size, f, t) => {
+      if (size - box < 1) return 50;
+      const off = Math.min(0, Math.max(box - size, box * t - f * size)); // desplazamiento (≤ 0)
+      return (off / (box - size)) * 100;
+    };
+    return axis(W, sw, fx, tx).toFixed(1) + '% ' + axis(H, sh, fy, ty).toFixed(1) + '%';
+  }
+
   function applyTheme(cfg) {
     const c = cfg.theme || DEFAULT_CONFIG.theme;
     document.documentElement.style.setProperty('--accent', c);
@@ -463,7 +481,7 @@
     googleCalUrl, outlookUrl, icsText, icsDataUrl,
     mapsLink, wazeLink, appleMapsLink, mapEmbed, mapQuery, places, fmtHour,
     ytEmbed, ytMusicLink, ytPlaylistId, ytVideoId,
-    shareLinks, waPhone, siteBaseUrl, guestLink, fillTemplate, copyText, applyTheme, toast,
+    focusPosition, shareLinks, waPhone, siteBaseUrl, guestLink, fillTemplate, copyText, applyTheme, toast,
     api, isDemo, demoReset, DEMO_KEY,
     withDefaults: (cfg) => Object.assign({}, DEFAULT_CONFIG, Object.fromEntries(Object.entries(cfg || {}).filter(([k, v]) => v != null && (v !== '' || !['name1', 'name2', 'date', 'timezone', 'theme', 'inviteTemplate'].includes(k)))))
   };
