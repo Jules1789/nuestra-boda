@@ -66,6 +66,13 @@ var CONFIG_INICIAL = [
 /*  Instalación                                                         */
 /* ------------------------------------------------------------------ */
 
+// Prueba rápida: si esta función funciona, los permisos están bien.
+function probarConexion() {
+  var ss = SpreadsheetApp.getActive();
+  if (!ss) throw new Error('Este código no está dentro de tu hoja. Ábrelo desde la hoja: Extensiones → Apps Script.');
+  Logger.log('Conectado a la hoja: ' + ss.getName() + ' (' + ss.getSheets().length + ' pestañas)');
+}
+
 function configurarHoja() {
   var ss = SpreadsheetApp.getActive();
   var inv = hoja_(HOJA_INVITADOS);
@@ -92,7 +99,8 @@ function configurarHoja() {
     try { SpreadsheetApp.getUi().alert(aviso); } catch (e) { /* si se ejecuta sin la hoja abierta */ }
   }
   hoja_(HOJA_PLANO);
-  carpetaFotos_(); // pide permiso de Google Drive para guardar las fotos que suban
+  // Carpeta para las fotos que suban (si Drive falla, el resto de la instalación sigue)
+  try { carpetaFotos_(); } catch (e) { Logger.log('Drive no disponible por ahora: ' + e); }
   if (hoja_(HOJA_INVITADOS).getLastRow() < 2) importarListaExistente();
   var mesas = hoja_(HOJA_MESAS);
   if (mesas.getLastRow() === 0) mesas.appendRow(['Mesa', 'Asiento', 'Invitado', 'Grupo / Familia', 'Asistencia']);
