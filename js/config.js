@@ -1,9 +1,9 @@
 // ─────────────────────────────────────────────────────────────────────
 //  Conexión con Google Sheets
-//  Pega aquí la URL de tu Apps Script (termina en /exec).
-//  Si se deja vacía, la app funciona en "modo demostración" (datos solo
-//  en este navegador) para que puedas probarla.
+//  URL de la aplicación web de Apps Script (termina en /exec).
+//  No contiene datos personales: solo es la "puerta" a tu hoja.
+//  Si se deja vacía, la app funciona en "modo demostración".
 // ─────────────────────────────────────────────────────────────────────
 window.BODA_CONFIG = {
-  API_URL: ""
+  API_URL: "https://script.google.com/macros/s/AKfycbznjhBmZljbZzz19UEpR90zZKRAlYeNcLvkJxFKUez_hSrRxnrOn6B_Q00ywJkSwGgjZA/exec"
 };
