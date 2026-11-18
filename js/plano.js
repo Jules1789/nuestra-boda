@@ -70,10 +70,11 @@
     const seats = plan().seats;
     const out = [];
     guests().forEach((g) => {
-      const n = partySize(g);
+      // Solo quienes asistirán (las casillas marcadas); la clave usa su posición en la familia
+      const idx = B.attendingIdx(g);
+      const n = idx.length;
       if (!n) return;
-      const keys = [];
-      for (let i = 0; i < n; i++) { const k = g.id + '#' + i; if (!seats[k]) keys.push(k); }
+      const keys = idx.map((i) => g.id + '#' + i).filter((k) => !seats[k]);
       if (keys.length) out.push({ g, keys, total: n, partial: keys.length < n });
     });
     return out;
@@ -88,7 +89,8 @@
     const byGuest = {};
     Object.keys(plan().seats).forEach((k) => { (byGuest[k.split('#')[0]] = byGuest[k.split('#')[0]] || []).push(k); });
     guests().forEach((g) => {
-      const n = partySize(g);
+      const idx = B.attendingIdx(g);
+      const n = idx.length;
       const assigned = byGuest[g.id] || [];
       let had = false;
       if (g.status === 'no' && assigned.length) {
@@ -96,14 +98,14 @@
         list.push({ type: 'no', g, keys: assigned, text: '<b>' + esc(g.name) + '</b> avisó que <b>no viene</b> y ocupa ' + assigned.length + (assigned.length > 1 ? ' sillas' : ' silla') + ' en ' + esc(tablesOfKeys(assigned)) + '.' });
         had = true;
       } else if (assigned.length) {
-        const extra = assigned.filter((k) => keyIdx(k) >= n);
+        const extra = assigned.filter((k) => !idx.includes(keyIdx(k)));
         if (extra.length) {
           extra.forEach((k) => { byKey[k] = 'sobra'; });
-          list.push({ type: 'sobra', g, keys: extra, text: '<b>' + esc(g.name) + '</b> ahora viene con ' + n + (n > 1 ? ' personas' : ' persona') + ': sobran ' + extra.length + (extra.length > 1 ? ' sillas' : ' silla') + ' en ' + esc(tablesOfKeys(extra)) + '.' });
+          list.push({ type: 'sobra', g, keys: extra, text: '<b>' + esc(g.name) + '</b>: ya no vienen ' + esc(extra.map(keyName).join(', ')) + '. ' + (extra.length > 1 ? 'Sobran ' + extra.length + ' sillas' : 'Sobra 1 silla') + ' en ' + esc(tablesOfKeys(extra)) + '.' });
           had = true;
         }
         const missing = [];
-        for (let i = 0; i < n; i++) { const k = g.id + '#' + i; if (!plan().seats[k]) missing.push(k); }
+        idx.forEach((i) => { const k = g.id + '#' + i; if (!plan().seats[k]) missing.push(k); });
         if (missing.length) {
           list.push({ type: 'falta', g, keys: missing, text: '<b>' + esc(g.name) + '</b> viene con ' + n + ': ' + (missing.length > 1 ? 'faltan ' + missing.length + ' sillas' : 'falta 1 silla') + ' para su grupo (está en ' + esc(tablesOfKeys(assigned)) + ').' });
           had = true;

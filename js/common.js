@@ -95,18 +95,41 @@
     return String(s || '').split(/[,;\n]/).map((x) => x.trim()).filter(Boolean);
   }
 
-  function partySize(g) {
-    if (!g) return 0;
-    if (g.status === 'no') return 0;
-    if (g.status === 'si') return 1 + (parseInt(g.companions, 10) || 0);
-    return Math.max(1, parseInt(g.invited, 10) || 1);
+  // Cada invitación es una familia/grupo: el titular + sus integrantes (lugares asignados por los novios)
+  function members(g) {
+    if (!g) return [];
+    const n = Math.max(1, parseInt(g.invited, 10) || 1);
+    const extra = splitNames(g.companionNames);
+    const first = String(g.name || '').split(' ')[0];
+    const out = [g.name];
+    for (let i = 1; i < n; i++) out.push(extra[i - 1] || ('Acompañante ' + i + ' de ' + first));
+    return out;
   }
 
-  function memberName(g, i) {
-    if (i === 0) return g.name;
-    const names = splitNames(g.companionNames);
-    return names[i - 1] || ('Acompañante ' + i + ' de ' + g.name.split(' ')[0]);
+  const isPlaceholderName = (v) => !v || /^acompa[nñ]ante/i.test(v) || /^(esposa|esposo|novia|novio|pareja) de /i.test(v);
+
+  // Posiciones (0 = titular) de quienes asistirán. "Asistentes" guarda p. ej. "0,2".
+  // Si está pendiente se planea con todos; si dijo que no, con nadie.
+  function attendingIdx(g) {
+    if (!g || g.status === 'no') return [];
+    const n = members(g).length;
+    const all = Array.from({ length: n }, (_, i) => i);
+    if (g.status !== 'si') return all;
+    const raw = String(g.attendees == null ? '' : g.attendees).trim();
+    if (raw) {
+      const set = new Set(raw.split(/[,;\s]+/).map((x) => parseInt(x, 10)).filter((i) => i >= 0 && i < n));
+      return all.filter((i) => set.has(i));
+    }
+    return all.slice(0, Math.min(n, 1 + (parseInt(g.companions, 10) || 0)));
   }
+
+  function partySize(g) { return attendingIdx(g).length; }
+
+  // Celulares: se comparan por los últimos 10 dígitos (México). Un grupo puede tener varios.
+  function normPhone(p) { const d = String(p || '').replace(/\D/g, ''); return d.length >= 10 ? d.slice(-10) : ''; }
+  function phoneList(s) { return String(s || '').split(/[,;/\n]+/).map(normPhone).filter(Boolean); }
+
+  function memberName(g, i) { return members(g)[i] || ('Integrante ' + (i + 1) + ' de ' + g.name); }
 
   function initials(name) {
     const parts = String(name || '').replace(/\(.*?\)/g, '').trim().split(/\s+/).filter((w) => w.length > 1 || /[A-ZÁÉÍÓÚÑ]/.test(w));
@@ -398,45 +421,47 @@
     const db = demoLoad();
     const ok = (o) => Object.assign({ ok: true }, o || {});
     const isSeated = (id) => Object.keys(db.plan.seats || {}).some((k) => k.split('#')[0] === id);
+    // Lo que el invitado puede ver de su invitación (igual que Apps Script): sin teléfonos ni notas
+    const pub = (g) => g && { id: g.id, name: g.name, invited: g.invited, status: g.status, members: members(g), attendees: attendingIdx(g).join(','), diet: g.diet, comments: g.comments, song: g.song, cabin: g.cabin };
+    const find = (p) => {
+      const tel = normPhone(p.phone), n = norm(p.name);
+      return (p.g && db.guests.find((x) => x.id === p.g)) ||
+        (tel && db.guests.find((x) => phoneList(x.phone).includes(tel))) ||
+        (n && db.guests.find((x) => members(x).some((m) => norm(m) === n))) || null;
+    };
     if (action === 'public') {
       const res = ok({ config: publicConfig(db.config) });
       const g = p.g && db.guests.find((x) => x.id === p.g);
-      if (g) res.guest = g;
+      if (g) res.guest = pub(g);
       return res;
     }
+    if (action === 'lookup') return ok({ guest: pub(find(p)) });
     if (action === 'rsvp') {
-      const name = String(p.name || '').trim();
-      if (!name) return { ok: false, error: 'Falta el nombre' };
-      const email = String(p.email || '').trim().toLowerCase();
-      let g = (p.g && db.guests.find((x) => x.id === p.g)) || (email && db.guests.find((x) => String(x.email || '').toLowerCase() === email)) ||
-        db.guests.find((x) => norm(x.name) === norm(name) && (!x.email || String(x.email).toLowerCase() === email));
+      const tel = normPhone(p.phone);
+      if (!tel) return { ok: false, error: 'Escribe tu número de celular (10 dígitos)' };
+      let g = find(p);
       const isNew = !g;
-      const attending = p.attending === true || p.attending === 'si';
-      const comp = attending && g ? Math.max(0, (parseInt(g.invited, 10) || 1) - 1) : 0;
       if (isNew) {
-        g = { id: newId(), name, group: '', phone: '', email: '', invited: 1 + comp, status: 'pendiente', companions: 0, companionNames: '', diet: '', comments: '', cabin: '', song: '', source: 'web', invitedAt: '', updated: '', change: '', notes: '' };
+        const name = String(p.name || '').trim();
+        if (!name) return { ok: false, error: 'Falta el nombre' };
+        g = { id: newId(), name, group: '', phone: '', email: '', invited: 1, status: 'pendiente', companions: 0, companionNames: '', attendees: '', diet: '', comments: '', cabin: '', song: '', source: 'web', invitedAt: '', updated: '', change: '', notes: '' };
         db.guests.push(g);
       }
-      const prevS = g.status, prevP = partySize(g), seated = isSeated(g.id);
+      const prevS = g.status, prevA = attendingIdx(g), seated = isSeated(g.id);
+      const ms = members(g);
+      (p.memberNames || []).forEach((nm, i) => { nm = String(nm || '').trim(); if (i > 0 && i < ms.length && nm && isPlaceholderName(ms[i])) ms[i] = nm; });
+      const idx = Array.from(new Set((p.attendees || []).map(Number))).filter((i) => i >= 0 && i < ms.length).sort((x, y) => x - y);
       Object.assign(g, {
-        status: attending ? 'si' : 'no', companions: comp, companionNames: attending && String(p.companionNames || '').trim() ? String(p.companionNames).trim() : g.companionNames,
-        diet: String(p.diet || '').trim(), comments: String(p.comments || '').trim(), song: String(p.song || '').trim(),
-        updated: new Date().toISOString()
+        companionNames: ms.slice(1).join(', '), status: idx.length ? 'si' : 'no', attendees: idx.join(','), companions: Math.max(0, idx.length - 1),
+        diet: String(p.diet || '').trim(), comments: String(p.comments || '').trim(), song: String(p.song || '').trim(), updated: new Date().toISOString()
       });
-      if (p.phone) g.phone = String(p.phone).trim();
-      if (email) g.email = email;
-      if (g.source === 'web' && 1 + comp > g.invited) g.invited = 1 + comp;
-      const changed = prevS !== g.status || prevP !== partySize(g);
-      if (!isNew && changed && (prevS !== 'pendiente' || seated)) {
-        g.change = 'Antes: ' + STATUS_LABEL[prevS] + ' (' + prevP + ') → Ahora: ' + STATUS_LABEL[g.status] + ' (' + partySize(g) + ')';
+      if (!phoneList(g.phone).includes(tel)) g.phone = phoneList(g.phone).concat(tel).join(', ');
+      const now = attendingIdx(g);
+      if (!isNew && (prevS !== g.status || prevA.join() !== now.join()) && (prevS !== 'pendiente' || seated)) {
+        g.change = 'Antes: ' + STATUS_LABEL[prevS] + ' (' + prevA.length + ') → Ahora: ' + STATUS_LABEL[g.status] + ' (' + now.length + ')';
       }
       demoSave(db);
-      return ok({ id: g.id, guest: g });
-    }
-    if (action === 'lookup') {
-      const e = String(p.email || '').trim().toLowerCase();
-      const g = db.guests.find((x) => e && String(x.email || '').toLowerCase() === e);
-      return ok({ guest: g || null });
+      return ok({ id: g.id, guest: pub(g) });
     }
     if (String(p.key) !== String(db.config.adminPin || '1234')) return { ok: false, error: 'Clave incorrecta' };
     switch (action) {
@@ -483,7 +508,7 @@
   }
 
   window.Boda = {
-    DEFAULT_CONFIG, FIELDS, STATUS_LABEL, $, $$, esc, norm, newId, splitNames, partySize, memberName, initials, hueOf,
+    DEFAULT_CONFIG, FIELDS, STATUS_LABEL, $, $$, esc, norm, newId, splitNames, partySize, memberName, members, attendingIdx, isPlaceholderName, normPhone, phoneList, initials, hueOf,
     zonedToDate, eventDates, formatLongDate, formatShortDate, formatTime,
     googleCalUrl, outlookUrl, icsText, icsDataUrl,
     mapsLink, wazeLink, appleMapsLink, mapEmbed, mapQuery, places, fmtHour,

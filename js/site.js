@@ -284,110 +284,129 @@
   }
 
   /* -------- Confirmación -------- */
-  /* -------- Confirmación (enlazada al correo) -------- */
+  /* -------- Confirmación (ligada al celular; por familia) -------- */
   const ME_KEY = 'boda_mi_respuesta';
   const remembered = () => { try { return JSON.parse(localStorage.getItem(ME_KEY)) || null; } catch (e) { return null; } };
-  const remember = (id, email) => { try { localStorage.setItem(ME_KEY, JSON.stringify({ id, email })); } catch (e) { /* nada */ } };
-  const validEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
-  const isPlaceholder = (v) => !v || /^acompa[nñ]ante/i.test(v) || /^(esposa|esposo|novia|novio|pareja) de /i.test(v);
+  const remember = (id, phone) => { try { localStorage.setItem(ME_KEY, JSON.stringify({ id, phone })); } catch (e) { /* nada */ } };
   let currentId = '';
-  let companionsFixed = 0, existing = [];
+  let phoneOk = '';            // celular ya verificado (10 dígitos)
+  let groupMembers = [];       // nombres de los integrantes de la invitación
 
-  // Llena el formulario con la invitación (por enlace personal, por correo o recordada en este celular)
-  function fillForm(g) {
+  // Paso 2: la familia con casillas para marcar quién asistirá
+  function showAnswerStep(g, typedName) {
     guest = g || null;
-    currentId = guest ? guest.id : guestId;
-    // Boda privada: los lugares ya están contados; el invitado confirma por toda su invitación.
-    companionsFixed = guest ? Math.max(0, (parseInt(guest.invited, 10) || 1) - 1) : 0;
-    existing = guest ? B.splitNames(guest.companionNames) : [];
-    const party = $('#party');
-    if (!guest) {
-      party.innerHTML = '<p class="party-note">Esta confirmación es <b>solo para ti</b>. Si tu invitación incluye a más personas, usa el enlace personal que te enviamos por WhatsApp.</p>';
-    } else if (!companionsFixed) {
-      party.innerHTML = '<p class="party-note">Tu invitación es <b>individual</b>: un lugar reservado para ti.</p>';
-    } else {
-      party.innerHTML = '<p class="party-note">Tu invitación es para <b>' + (companionsFixed + 1) + ' personas</b>:</p><ul class="party-list"><li>' + esc(guest.name) + '</li>' +
-        Array.from({ length: companionsFixed }, (_, i) => {
-          const v = existing[i] || '';
-          return isPlaceholder(v)
-            ? '<li><input data-slot="' + i + '" placeholder="Nombre de tu acompañante (opcional)"></li>'
-            : '<li>' + esc(v) + '</li>';
-        }).join('') + '</ul><small class="muted">Si alguien de tu invitación no podrá asistir, cuéntanos en el mensaje para los novios.</small>';
+    currentId = guest ? guest.id : '';
+    groupMembers = guest && guest.members && guest.members.length ? guest.members.slice() : [typedName || ($('#fName').value.trim())];
+    const marked = guest && guest.status === 'si' ? String(guest.attendees || '').split(',').filter(Boolean).map(Number) : null;
+    const isNew = !guest;
+    const single = groupMembers.length === 1;
+    $('#who').innerHTML = '<span>' + (isNew ? 'Confirmación de <b>' + esc(groupMembers[0]) + '</b>'
+      : (single ? 'Invitación de <b>' + esc(guest.name) + '</b> · 1 lugar' : 'Invitación de <b>' + esc(guest.name) + '</b> · ' + groupMembers.length + ' lugares')) +
+      '</span><button type="button" id="changePhone">Cambiar número</button>';
+    $('#checksLegend').textContent = single ? '¿Asistirás?' : '¿Quiénes de tu familia asistirán?';
+    $('#memberChecks').innerHTML = groupMembers.map((m, i) => {
+      const on = marked ? marked.includes(i) : (guest && guest.status === 'no' ? false : true);
+      const name = B.isPlaceholderName(m)
+        ? '<input data-slot="' + i + '" placeholder="Nombre de tu acompañante" value="">'
+        : esc(m);
+      return '<label class="mcheck' + (on ? ' on' : '') + '"><input type="checkbox" data-i="' + i + '"' + (on ? ' checked' : '') + '><span class="nm">' + name + '</span></label>';
+    }).join('');
+    $('#noneCheck').checked = !!(guest && guest.status === 'no');
+    if (guest) {
+      $('#rsvpSub').textContent = guest.status === 'pendiente' ? 'Marca quiénes de tu invitación nos acompañarán.' : 'Ya recibimos tu respuesta. Si algo cambió, puedes actualizarla aquí.';
+      const diets = String(guest.diet || '').split(',').map((x) => x.trim()).filter(Boolean);
+      const known = $$('#dietChips input').map((i) => i.value);
+      $$('#dietChips input').forEach((i) => { i.checked = diets.includes(i.value); });
+      $('#fDietOther').value = diets.filter((d) => !known.includes(d)).join(', ');
+      $('#fSong').value = guest.song || '';
+      $('#fComments').value = guest.comments || '';
     }
-    if (!guest) return;
-    $('#fName').value = guest.name;
-    if (guest.email) $('#fEmail').value = guest.email;
-    $$('input[name=attending]').forEach((r) => { r.checked = r.value === guest.status; });
-    $('#yesFields').hidden = guest.status !== 'si';
-    if (guest.status === 'si' || guest.status === 'no') $('#rsvpSub').textContent = 'Ya recibimos tu respuesta. Si algo cambió, puedes actualizarla aquí.';
-    const diets = String(guest.diet || '').split(',').map((x) => x.trim()).filter(Boolean);
-    const known = $$('#dietChips input').map((i) => i.value);
-    $$('#dietChips input').forEach((i) => { i.checked = diets.includes(i.value); });
-    $('#fDietOther').value = diets.filter((d) => !known.includes(d)).join(', ');
-    $('#fSong').value = guest.song || '';
-    $('#fComments').value = guest.comments || '';
+    syncChecks();
+    $('#stepPhone').hidden = true;
+    $('#stepAnswer').hidden = false;
+    $('#changePhone').onclick = () => { $('#stepAnswer').hidden = true; $('#stepPhone').hidden = false; $('#fPhone').focus(); };
   }
 
-  // Si escribe un correo con el que ya respondió, traemos su respuesta para que la cambie
-  async function lookupEmail() {
-    const email = $('#fEmail').value.trim().toLowerCase();
-    if (!validEmail(email) || guestId || (guest && String(guest.email || '').toLowerCase() === email)) return;
+  function syncChecks() {
+    const boxes = $$('#memberChecks input[type=checkbox]');
+    boxes.forEach((b) => b.closest('.mcheck').classList.toggle('on', b.checked));
+    const any = boxes.some((b) => b.checked);
+    if (any) $('#noneCheck').checked = false;
+    $('#yesFields').hidden = !any;
+  }
+
+  async function continuePhone() {
+    const p1 = B.normPhone($('#fPhone').value), p2 = B.normPhone($('#fPhone2').value);
+    const f1 = $('#fPhone').closest('.field'), f2 = $('#fPhone2').closest('.field');
+    f1.classList.toggle('error', !p1); f2.classList.toggle('error', !p2 || p1 !== p2);
+    if (!p1) { B.toast('Escribe tu número de celular a 10 dígitos 📱', 'warn'); return; }
+    if (p1 !== p2) { B.toast('Los dos números no coinciden. Revísalos 🙂', 'warn'); return; }
+    const nameShown = !$('#nameField').hidden;
+    const name = $('#fName').value.trim();
+    if (nameShown && !name) { $('#fName').closest('.field').classList.add('error'); B.toast('Escribe tu nombre completo', 'warn'); return; }
+    phoneOk = p1;
+    const btn = $('#btnContinue');
+    btn.disabled = true; btn.textContent = 'Buscando tu invitación…';
     try {
-      const r = await B.api('lookup', { email });
-      if (r && r.ok && r.guest) {
-        fillForm(r.guest);
-        B.toast('¡Hola, ' + esc(r.guest.name.split(' ')[0]) + '! Encontramos tu respuesta; puedes cambiarla aquí.', 'ok', 4500);
+      const r = await B.api('lookup', { g: guestId || currentId, phone: p1, name: nameShown ? name : '' });
+      if (r && r.ok && r.guest) { showAnswerStep(r.guest); return; }
+      if (!nameShown) {
+        // Número nuevo: pedimos el nombre para encontrar su invitación
+        $('#nameField').hidden = false;
+        $('#fName').focus();
+        return;
       }
-    } catch (e) { /* sin conexión: se intentará al enviar */ }
+      showAnswerStep(null, name); // no está en la lista: responde solo por sí mismo
+    } catch (e) {
+      B.toast('No pudimos conectarnos. Revisa tu internet e inténtalo de nuevo.', 'error', 5000);
+    } finally {
+      btn.disabled = false; btn.textContent = 'Continuar';
+    }
   }
 
   function setupRsvp(fromMemory) {
     const form = $('#rsvpForm');
-    $$('input[name=attending]').forEach((r) => r.addEventListener('change', () => {
-      $('#yesFields').hidden = !$('input[name=attending][value=si]').checked;
-      r.closest('.field').classList.remove('error');
-    }));
-    $('#fEmail').addEventListener('change', lookupEmail);
-    $('#fEmail').addEventListener('input', () => $('#fEmail').closest('.field').classList.remove('error'));
-    fillForm(guest);
+    const mem = remembered();
+    // Enlace personal: ya sabemos su invitación, solo falta su celular
+    if (guest && guestId) {
+      $('#phoneHelp').innerHTML = 'Hola <b>' + esc(guest.name.split(' ')[0]) + '</b>: escribe tu celular para confirmar. Con él podrás regresar y cambiar tu respuesta.';
+    }
+    if (mem && mem.phone) { $('#fPhone').value = mem.phone; }
+    $('#btnContinue').onclick = continuePhone;
+    ['#fPhone', '#fPhone2', '#fName'].forEach((s) => $(s).addEventListener('input', () => $(s).closest('.field').classList.remove('error')));
+    $('#fPhone2').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); continuePhone(); } });
+    $('#fName').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); continuePhone(); } });
+    $('#memberChecks').addEventListener('change', syncChecks);
+    $('#noneCheck').addEventListener('change', () => {
+      if ($('#noneCheck').checked) $$('#memberChecks input[type=checkbox]').forEach((b) => { b.checked = false; });
+      syncChecks();
+    });
     // Ya respondió desde este celular: le mostramos su respuesta (con botón para cambiarla)
-    if (fromMemory && guest && (guest.status === 'si' || guest.status === 'no')) {
-      showDone(guest.status === 'si', companionsFixed, guest.name, false);
+    if (fromMemory && guest && mem && mem.phone) {
+      phoneOk = mem.phone;
+      showAnswerStep(guest);
+      if (guest.status === 'si' || guest.status === 'no') showDone();
     }
 
     form.addEventListener('submit', async (ev) => {
       ev.preventDefault();
-      const name = $('#fName').value.trim();
-      const email = $('#fEmail').value.trim().toLowerCase();
-      const att = $('input[name=attending]:checked');
-      let bad = false;
-      $('#fEmail').closest('.field').classList.toggle('error', !validEmail(email)); if (!validEmail(email)) bad = true;
-      $('#fName').closest('.field').classList.toggle('error', !name); if (!name) bad = true;
-      $('input[name=attending]').closest('.field').classList.toggle('error', !att); if (!att) bad = true;
-      if (bad) { B.toast(!validEmail(email) ? 'Escribe tu correo (así podrás cambiar tu respuesta después) 🙂' : 'Escribe tu nombre y dinos si vienes 🙂', 'warn'); return; }
-      const attending = att.value === 'si';
+      if (!phoneOk) { $('#stepAnswer').hidden = true; $('#stepPhone').hidden = false; return; }
+      const attendees = $$('#memberChecks input[type=checkbox]').filter((b) => b.checked).map((b) => +b.dataset.i);
+      if (!attendees.length && !$('#noneCheck').checked) { B.toast('Marca quién asistirá, o "No podremos asistir"', 'warn'); return; }
+      const memberNames = groupMembers.map((m, i) => { const inp = $('input[data-slot="' + i + '"]', $('#memberChecks')); return inp ? inp.value.trim() : ''; });
       const diet = $$('#dietChips input:checked').map((i) => i.value).concat($('#fDietOther').value.trim() ? [$('#fDietOther').value.trim()] : []).join(', ');
-      const companions = attending ? companionsFixed : 0;
-      // Conserva los nombres que ya tenían; solo reemplaza los "Acompañante de…" si el invitado escribió el nombre
-      const companionNames = Array.from({ length: companionsFixed }, (_, i) => {
-        const typed = $('input[data-slot="' + i + '"]', $('#party'));
-        return (typed && typed.value.trim()) || existing[i] || ('Acompañante ' + (i + 1) + ' de ' + name.split(' ')[0]);
-      }).join(', ');
       const btn = $('#rsvpBtn');
       btn.disabled = true; btn.textContent = 'Enviando…';
       try {
         const res = await B.api('rsvp', {
-          g: currentId, email, name, attending, companions, companionNames: attending ? companionNames : '',
-          diet: attending ? diet : '', song: attending ? $('#fSong').value.trim() : '',
-          phone: $('#fPhone').value.trim(), comments: $('#fComments').value.trim()
+          g: currentId || guestId, phone: phoneOk, name: groupMembers[0], attendees, memberNames,
+          diet: attendees.length ? diet : '', song: attendees.length ? $('#fSong').value.trim() : '', comments: $('#fComments').value.trim()
         });
         if (!res || !res.ok) throw new Error((res && res.error) || 'Error');
         currentId = res.id || currentId;
-        remember(currentId, email);
-        // El servidor devuelve la invitación real (por si lo encontró por nombre o correo)
-        if (res.guest) fillForm(res.guest);
-        else guest = Object.assign({}, guest || { name, invited: 1 }, { id: currentId, email, status: attending ? 'si' : 'no' });
-        showDone(attending, attending ? companionsFixed : 0, name, true);
+        remember(currentId, phoneOk);
+        if (res.guest) { guest = res.guest; groupMembers = guest.members || groupMembers; }
+        showDone(true);
       } catch (e) {
         B.toast(e.message && e.message !== 'Error' && !/fetch/i.test(e.message) ? esc(e.message) : 'No pudimos enviar tu respuesta. Revisa tu conexión e inténtalo de nuevo.', 'error', 5000);
       } finally {
@@ -395,18 +414,24 @@
       }
     });
 
-    $('#rsvpEdit').onclick = () => { $('#rsvpDone').hidden = true; form.hidden = false; fillForm(guest); form.scrollIntoView({ behavior: 'smooth' }); };
+    $('#rsvpEdit').onclick = () => { $('#rsvpDone').hidden = true; form.hidden = false; showAnswerStep(guest); form.scrollIntoView({ behavior: 'smooth' }); };
   }
 
-  function showDone(attending, companions, name, scroll) {
+  // Pantalla final con el resumen de quiénes van
+  function showDone(scroll) {
     $('#rsvpForm').hidden = true;
     const done = $('#rsvpDone'); done.hidden = false;
-    const first = name.split(' ')[0];
-    if (attending) {
+    const g = guest || {};
+    const ms = g.members || groupMembers;
+    const idx = g.status === 'si' ? String(g.attendees || '').split(',').filter(Boolean).map(Number) : [];
+    const first = String(g.name || ms[0] || '').split(' ')[0];
+    if (idx.length) {
       $('#doneIcon').textContent = '🥂';
       $('#doneTitle').textContent = '¡Nos vemos ahí, ' + first + '!';
       const hasDate = !!B.eventDates(cfg).start;
-      $('#doneText').textContent = 'Confirmaste ' + (1 + companions) + (companions ? ' lugares' : ' lugar') + '.' + (hasDate ? ' Guarda la fecha en tu calendario:' : '');
+      const names = idx.map((i) => ms[i]).filter(Boolean);
+      $('#doneText').innerHTML = 'Confirmaste <b>' + idx.length + (idx.length > 1 ? ' lugares' : ' lugar') + '</b>' +
+        (ms.length > 1 ? ': ' + esc(names.join(', ')) : '') + '.' + (hasDate ? '<br>Guarda la fecha en tu calendario:' : '');
       const url = pageUrl();
       $('#doneCal').innerHTML = !hasDate ? '' :
         '<a class="btn btn-cal" target="_blank" rel="noopener" href="' + esc(B.googleCalUrl(cfg, url)) + '"><span>G</span>Google</a>' +
@@ -418,7 +443,7 @@
       $('#doneText').textContent = 'Te vamos a extrañar. Si cambian tus planes, puedes actualizar tu respuesta aquí mismo.';
       $('#doneCal').innerHTML = '';
     }
-    if (scroll !== false) done.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (scroll) done.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   /* -------- Navegación y animaciones -------- */

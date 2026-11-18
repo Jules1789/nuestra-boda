@@ -279,6 +279,7 @@
         case 'diet': if (!g.diet) return false; break;
         case 'change': if (!g.change) return false; break;
         case 'unsent': if (g.invitedAt) return false; break;
+        case 'sent': if (!g.invitedAt) return false; break;
       }
       if (!q) return true;
       return norm([g.name, g.group, g.phone, g.email, g.companionNames, g.cabin, g.notes].join(' ')).includes(q);
@@ -292,22 +293,38 @@
     const list = filteredGuests();
     const people = list.reduce((a, g) => a + partySize(g), 0);
     $('#gCount').textContent = list.length + ' invitaciones · ' + people + ' personas';
+    const picked = S.selected || (S.selected = new Set());
+    $('#mergeBar').hidden = !S.selecting;
+    $('#mergeCount').textContent = picked.size;
+    $('#btnMergeGo').disabled = picked.size < 2;
+    $('#btnMerge').classList.toggle('btn-primary', !!S.selecting);
     $('#guestList').innerHTML = list.length ? list.map((g) => {
       const tables = guestTables(g);
-      return '<div class="gcard' + (g.change ? ' changed' : '') + '">' + avatar(g) +
-        '<div class="gmain" data-edit="' + g.id + '"><b>' + esc(g.name) + '</b> <span class="pill ' + g.status + '">' + STATUS_LABEL[g.status] + '</span>' +
+      const ms = B.members(g), att = B.attendingIdx(g);
+      const famTxt = ms.length > 1 ? ms.map((n, i) => (g.status === 'si' ? (att.includes(i) ? '✓ ' : '✗ ') : '') + n).join(' · ') : '';
+      return '<div class="gcard' + (g.change ? ' changed' : '') + (S.selecting && picked.has(g.id) ? ' picked' : '') + '"' + (S.selecting ? ' data-pick="' + g.id + '"' : '') + '>' +
+        (S.selecting ? '<input type="checkbox" class="pickbox"' + (picked.has(g.id) ? ' checked' : '') + '>' : avatar(g)) +
+        '<div class="gmain"' + (S.selecting ? '' : ' data-edit="' + g.id + '"') + '><b>' + esc(g.name) + '</b> <span class="pill ' + g.status + '">' + STATUS_LABEL[g.status] + '</span>' +
         (g.source === 'web' ? ' <span class="pill web">web</span>' : '') + (g.change ? ' <span class="pill warn">cambió</span>' : '') +
-        '<div class="gmeta"><span>👥 ' + (g.status === 'si' ? partySize(g) + ' confirmados' : g.status === 'no' ? '0 de ' + g.invited : g.invited + ' lugares') + '</span>' +
+        '<div class="gmeta"><span>👥 ' + (g.status === 'si' ? partySize(g) + ' de ' + ms.length + ' asistirán' : g.status === 'no' ? '0 de ' + ms.length : ms.length + (ms.length > 1 ? ' lugares' : ' lugar')) + '</span>' +
         (g.group ? '<span>🏷 ' + esc(g.group) + '</span>' : '') +
         (tables.length ? '<span>🪑 ' + esc(tables.join(', ')) + '</span>' : '') +
         (g.diet ? '<span>🍽 ' + esc(g.diet) + '</span>' : '') +
         (g.cabin ? '<span>🏡 ' + esc(g.cabin) + '</span>' : '') +
-        (g.invitedAt ? '<span>✓ invitación enviada</span>' : '') +
+        (g.invitedAt ? '<span style="color:var(--ok)">✓ enviada ' + esc(fmtDate(g.invitedAt)) + '</span>' : '<span>✉ sin enviar</span>') +
         (g.change ? '<span style="color:var(--warn)">' + esc(g.change) + '</span>' : '') +
-        '</div></div>' +
+        '</div>' + (famTxt ? '<div class="gfam">' + esc(famTxt) + '</div>' : '') + '</div>' +
         '<div class="gactions"><button class="btn btn-wa btn-sm" data-wa="' + g.id + '" title="Enviar invitación por WhatsApp">WhatsApp</button></div></div>';
     }).join('') : '<p class="muted">No hay invitados con este filtro.</p>';
     $$('#guestList [data-edit]').forEach((el) => { el.onclick = () => openGuest(el.dataset.edit); });
+    $$('#guestList [data-pick]').forEach((el) => {
+      el.onclick = (e) => {
+        if (e.target.closest('[data-wa]')) return;
+        const id = el.dataset.pick;
+        picked.has(id) ? picked.delete(id) : picked.add(id);
+        renderGuests();
+      };
+    });
     $$('#guestList [data-wa]').forEach((el) => { el.onclick = () => sendInvite(el.dataset.wa); });
   }
 
@@ -318,6 +335,9 @@
       b.onclick = () => { S.filter = b.dataset.f; $$('#gFilters button').forEach((x) => x.classList.toggle('on', x === b)); renderGuests(); };
     });
     $('#btnAddGuest').onclick = () => openGuest(null);
+    $('#btnMerge').onclick = () => { S.selecting = !S.selecting; S.selected = new Set(); renderGuests(); if (S.selecting) B.toast('Toca las invitaciones que quieres juntar en una familia', 'info', 3000); };
+    $('#btnMergeCancel').onclick = () => { S.selecting = false; S.selected = new Set(); renderGuests(); };
+    $('#btnMergeGo').onclick = () => openMerge(Array.from(S.selected || []));
     $('#btnPaste').onclick = openPaste;
     $('#btnExport').onclick = (e) => { e.stopPropagation(); $('#exportMenu').hidden = !$('#exportMenu').hidden; };
     document.addEventListener('click', () => { $('#exportMenu').hidden = true; });
@@ -344,30 +364,54 @@
     });
   }
 
+  function fmtDate(iso) { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }); }
+
+  // Mueve los asientos ya asignados cuando cambian los integrantes de una familia.
+  // mapFn(idxViejo) → 'idNuevo#idxNuevo' o null (quitar asiento)
+  function remapSeats(guestId, mapFn) {
+    let changed = false;
+    Object.keys(S.plan.seats).forEach((k) => {
+      const [id, i] = k.split('#');
+      if (id !== guestId) return;
+      const nk = mapFn(+i);
+      if (nk === k) return;
+      const a = S.plan.seats[k];
+      delete S.plan.seats[k];
+      if (nk) S.plan.seats[nk] = a;
+      changed = true;
+    });
+    return changed;
+  }
+
+  /* ---- Editar invitación = una familia con sus integrantes ---- */
   function openGuest(id) {
     const g = id ? S.guests.find((x) => x.id === id) : null;
-    const v = g || { id: '', name: '', group: '', phone: '', email: '', invited: 1, status: 'pendiente', companions: 0, companionNames: '', diet: '', comments: '', cabin: '', song: '', notes: '', source: 'lista', invitedAt: '', change: '' };
+    const v = g || { id: '', name: '', group: '', phone: '', email: '', invited: 1, status: 'pendiente', companions: 0, companionNames: '', attendees: '', diet: '', comments: '', cabin: '', song: '', notes: '', source: 'lista', invitedAt: '', change: '' };
     const groups = Array.from(new Set(S.guests.map((x) => x.group).filter(Boolean))).sort();
     const tables = g ? guestTables(g) : [];
+    const att = g && g.status === 'si' ? B.attendingIdx(g) : [];
+    // Filas de la familia: { name, old (posición anterior o null si es nuevo), att }
+    let rows = (g ? B.members(g) : ['']).map((n, i) => ({ name: g && B.isPlaceholderName(n) && i > 0 ? '' : n, ph: n, old: g ? i : null, att: att.includes(i) }));
+    const split = []; // integrantes que pasan a su propia invitación
+
     openModal(
-      '<h3>' + (g ? esc(g.name) : 'Nuevo invitado') + '</h3>' +
+      '<h3>' + (g ? esc(g.name) : 'Nueva invitación') + '</h3>' +
       (g && g.change ? '<div class="alert">⚠️ ' + esc(g.change) + '</div>' : '') +
       '<div class="form-grid">' +
-      '<label class="full"><span>Nombre (quien recibe la invitación)</span><input id="eName" value="' + esc(v.name) + '"></label>' +
-      '<label><span>Grupo / Familia</span><input id="eGroup" list="grpList" value="' + esc(v.group) + '"><datalist id="grpList">' + groups.map((x) => '<option value="' + esc(x) + '">').join('') + '</datalist></label>' +
-      '<label><span>Lugares asignados (incluyéndole)</span><input id="eInvited" type="number" min="1" max="30" value="' + (v.invited || 1) + '"></label>' +
-      '<label><span>WhatsApp / teléfono</span><input id="ePhone" type="tel" value="' + esc(v.phone) + '"></label>' +
-      '<label><span>Email</span><input id="eEmail" type="email" value="' + esc(v.email) + '"></label>' +
+      '<div class="full fam"><span class="lbl">Familia · integrantes de esta invitación</span><div id="famRows"></div>' +
+      '<div class="fam-actions"><button type="button" class="btn btn-sm" id="famAdd">＋ Agregar integrante</button></div>' +
+      '<small class="muted">El primero es el titular. Marca ✓ quiénes asistirán. “Separar” lo vuelve su propia invitación.</small></div>' +
       '<label><span>Asistencia</span><select id="eStatus">' + ['pendiente', 'si', 'no'].map((s) => '<option value="' + s + '"' + (v.status === s ? ' selected' : '') + '>' + STATUS_LABEL[s] + '</option>').join('') + '</select></label>' +
-      '<label><span>Acompañantes confirmados</span><input id="eComp" type="number" min="0" max="29" value="' + (v.companions || 0) + '"></label>' +
-      '<label class="full"><span>Nombres de acompañantes (separados por coma)</span><textarea id="eCompNames" rows="2">' + esc(v.companionNames) + '</textarea></label>' +
+      '<label><span>Categoría (ej. Novia, Novio, Amigos)</span><input id="eGroup" list="grpList" value="' + esc(v.group) + '"><datalist id="grpList">' + groups.map((x) => '<option value="' + esc(x) + '">').join('') + '</datalist></label>' +
+      '<label class="full"><span>Celulares de la familia (separados por coma)</span><input id="ePhone" type="tel" value="' + esc(v.phone) + '" placeholder="Ej. 81 1234 5678, 81 8765 4321"><small class="muted">Con cualquiera de estos números pueden confirmar por toda la familia. Se agregan solos cuando alguien responde.</small></label>' +
+      '<label class="full chk"><input type="checkbox" id="eSent"' + (v.invitedAt ? ' checked' : '') + '> Invitación enviada por WhatsApp' + (v.invitedAt ? ' <span class="muted">(' + esc(fmtDate(v.invitedAt)) + ')</span>' : '') + '</label>' +
       '<label class="full"><span>Restricciones alimentarias</span><input id="eDiet" value="' + esc(v.diet) + '"></label>' +
       '<label><span>Cabaña</span><input id="eCabin" value="' + esc(v.cabin || '') + '"></label>' +
       '<label><span>Canción sugerida</span><input id="eSong" value="' + esc(v.song || '') + '"></label>' +
       '<label class="full"><span>Comentarios del invitado</span><textarea id="eComments" rows="2">' + esc(v.comments) + '</textarea></label>' +
       '<label class="full"><span>Notas privadas (solo ustedes)</span><textarea id="eNotes" rows="2">' + esc(v.notes) + '</textarea></label>' +
       '</div>' +
-      (g ? '<p class="muted small">' + (tables.length ? '🪑 Sentado en: ' + esc(tables.join(', ')) + ' · ' : '') + 'Enlace personal: <code>' + esc(B.guestLink(S.config, g)) + '</code></p>' : '') +
+      (g ? '<p class="muted small">' + (tables.length ? '🪑 Sentados en: ' + esc(tables.join(', ')) + ' · ' : '') + 'Enlace personal: <code>' + esc(B.guestLink(S.config, g)) + '</code></p>' : '') +
       '<div class="modal-actions">' +
       (g ? '<button class="btn btn-danger" id="eDel">Eliminar</button>' : '') +
       (g ? '<button class="btn" id="eCopy">Copiar enlace</button>' : '') +
@@ -376,29 +420,121 @@
       (g && g.change ? '<button class="btn" id="eAck">✓ Cambio revisado</button>' : '') +
       '<button class="btn btn-primary" id="eSave">Guardar</button></div>',
       (m) => {
-        $('#eSave', m).onclick = () => {
-          const name = $('#eName', m).value.trim();
-          if (!name) { B.toast('Escribe un nombre', 'warn'); return; }
-          const status = $('#eStatus', m).value;
-          const invited = Math.max(1, parseInt($('#eInvited', m).value, 10) || 1);
-          let comp = Math.max(0, parseInt($('#eComp', m).value, 10) || 0);
-          if (status !== 'si') comp = status === 'no' ? 0 : comp;
-          const ng = Object.assign({}, v, {
-            id: v.id || B.newId(), name, group: $('#eGroup', m).value.trim(), invited, phone: $('#ePhone', m).value.trim(), email: $('#eEmail', m).value.trim(),
-            status, companions: comp, companionNames: $('#eCompNames', m).value.trim(), diet: $('#eDiet', m).value.trim(), cabin: $('#eCabin', m).value.trim(),
-            song: $('#eSong', m).value.trim(), comments: $('#eComments', m).value.trim(), notes: $('#eNotes', m).value.trim(), updated: v.updated || new Date().toISOString()
+        const status = () => $('#eStatus', m).value;
+        const drawRows = () => {
+          $('#famRows', m).innerHTML = rows.map((r, i) =>
+            '<div class="famrow">' +
+            '<label class="att" title="Asistirá"><input type="checkbox" data-att="' + i + '"' + (r.att && status() === 'si' ? ' checked' : '') + (status() === 'no' ? ' disabled' : '') + '></label>' +
+            '<input class="mname" data-name="' + i + '" value="' + esc(r.name) + '" placeholder="' + (i === 0 ? 'Nombre del titular' : esc(r.ph && B.isPlaceholderName(r.ph) ? r.ph : 'Nombre del integrante')) + '">' +
+            (i > 0 ? '<button type="button" class="btn btn-sm" data-split="' + i + '" title="Hacerlo su propia invitación">Separar</button><button type="button" class="btn btn-sm btn-danger" data-del="' + i + '" title="Quitar">✕</button>' : '<span class="tit">Titular</span>') +
+            '</div>').join('');
+          $$('[data-name]', m).forEach((inp) => { inp.oninput = () => { rows[+inp.dataset.name].name = inp.value; }; });
+          $$('[data-att]', m).forEach((cb) => {
+            cb.onchange = () => {
+              rows[+cb.dataset.att].att = cb.checked;
+              if (cb.checked && status() !== 'si') { $('#eStatus', m).value = 'si'; drawRows(); }
+            };
           });
+          $$('[data-del]', m).forEach((b) => { b.onclick = () => { rows.splice(+b.dataset.del, 1); drawRows(); }; });
+          $$('[data-split]', m).forEach((b) => {
+            b.onclick = () => {
+              const r = rows[+b.dataset.split];
+              if (!(r.name || '').trim()) { B.toast('Escribe su nombre antes de separarlo', 'warn'); return; }
+              split.push(r); rows.splice(+b.dataset.split, 1); drawRows();
+              B.toast(esc(r.name) + ' tendrá su propia invitación al guardar', 'info', 2500);
+            };
+          });
+        };
+        drawRows();
+        $('#famAdd', m).onclick = () => { rows.push({ name: '', ph: '', old: null, att: status() === 'si' }); drawRows(); $$('.mname', m).slice(-1)[0].focus(); };
+        $('#eStatus', m).onchange = () => {
+          if (status() === 'si' && !rows.some((r) => r.att)) rows.forEach((r) => { r.att = true; });
+          drawRows();
+        };
+
+        $('#eSave', m).onclick = () => {
+          const name = (rows[0].name || '').trim();
+          if (!name) { B.toast('Escribe el nombre del titular', 'warn'); return; }
+          const first = name.split(' ')[0];
+          const names = rows.map((r, i) => (r.name || '').trim() || (i === 0 ? name : 'Acompañante ' + i + ' de ' + first));
+          let st = status();
+          let attIdx = st === 'si' ? rows.map((r, i) => (r.att ? i : -1)).filter((i) => i >= 0) : [];
+          if (st === 'si' && !attIdx.length) st = 'no';
+          const gid = v.id || B.newId();
+          const ng = Object.assign({}, v, {
+            id: gid, name, group: $('#eGroup', m).value.trim(), invited: rows.length, companionNames: names.slice(1).join(', '),
+            phone: B.phoneList($('#ePhone', m).value).join(', ') || $('#ePhone', m).value.trim(), status: st,
+            attendees: attIdx.join(','), companions: Math.max(0, attIdx.length - 1),
+            invitedAt: $('#eSent', m).checked ? (v.invitedAt || new Date().toISOString()) : '',
+            diet: $('#eDiet', m).value.trim(), cabin: $('#eCabin', m).value.trim(), song: $('#eSong', m).value.trim(),
+            comments: $('#eComments', m).value.trim(), notes: $('#eNotes', m).value.trim(), updated: v.updated || new Date().toISOString()
+          });
+          // Los separados: cada uno con su propia invitación (misma categoría y cabaña)
+          const now = new Date().toISOString();
+          const news = split.map((r) => ({
+            id: B.newId(), name: r.name.trim(), group: ng.group, phone: '', email: '', invited: 1,
+            status: v.status === 'si' && r.att ? 'si' : (v.status === 'no' ? 'no' : 'pendiente'), attendees: v.status === 'si' && r.att ? '0' : '', companions: 0,
+            companionNames: '', diet: '', comments: '', cabin: ng.cabin, song: '', source: 'lista', invitedAt: '', updated: now, change: '',
+            notes: 'Separado de la invitación de ' + name + '.', _old: r.old
+          }));
           closeModal();
-          saveGuests(ng);
+          saveGuests([ng].concat(news.map((x) => { const c = Object.assign({}, x); delete c._old; return c; })));
+          // Reacomodar asientos ya asignados según las nuevas posiciones
+          if (g && remapSeats(g.id, (oi) => {
+            const ni = rows.findIndex((r) => r.old === oi);
+            if (ni >= 0) return g.id + '#' + ni;
+            const sp = news.find((x) => x._old === oi);
+            return sp ? sp.id + '#0' : null;
+          })) savePlan();
         };
         if (g) {
-          $('#eDel', m).onclick = async () => { if (await confirmBox('Eliminar invitado', '¿Seguro que quieres eliminar a <b>' + esc(g.name) + '</b>? Se liberarán sus asientos.', 'Eliminar', true)) deleteGuests([g.id]); };
+          $('#eDel', m).onclick = async () => { if (await confirmBox('Eliminar invitación', '¿Seguro que quieres eliminar la invitación de <b>' + esc(g.name) + '</b>? Se liberarán sus asientos.', 'Eliminar', true)) deleteGuests([g.id]); };
           $('#eCopy', m).onclick = async () => { await B.copyText(B.guestLink(S.config, g)); B.toast('Enlace copiado ✓', 'ok'); };
           $('#eWa', m).onclick = () => sendInvite(g.id);
           if ($('#eAck', m)) $('#eAck', m).onclick = () => { closeModal(); ackChange(g.id); };
         }
-        $('#eStatus', m).onchange = () => { if ($('#eStatus', m).value === 'si' && !+$('#eComp', m).value) $('#eComp', m).value = Math.max(0, (+$('#eInvited', m).value || 1) - 1); };
       });
+  }
+
+  /* ---- Unir varias invitaciones en una sola familia ---- */
+  function openMerge(ids) {
+    const list = ids.map((id) => S.guests.find((x) => x.id === id)).filter(Boolean);
+    if (list.length < 2) { B.toast('Selecciona al menos 2 invitaciones', 'warn'); return; }
+    openModal('<h3>Unir en una familia</h3><p class="small">Se juntarán ' + list.reduce((a, g) => a + B.members(g).length, 0) + ' personas en una sola invitación. ¿Quién será el titular?</p>' +
+      '<div class="actions-col">' + list.map((g, i) => '<label class="chk"><input type="radio" name="tit" value="' + g.id + '"' + (i === 0 ? ' checked' : '') + '> <b>' + esc(g.name) + '</b> <span class="muted small">(' + B.members(g).length + ')</span></label>').join('') + '</div>' +
+      '<div class="modal-actions"><button class="btn" id="mgNo">Cancelar</button><button class="btn btn-primary" id="mgYes">Unir</button></div>', (m) => {
+      $('#mgNo', m).onclick = closeModal;
+      $('#mgYes', m).onclick = () => {
+        const titId = $('input[name=tit]:checked', m).value;
+        const tit = list.find((g) => g.id === titId);
+        const others = list.filter((g) => g.id !== titId);
+        const ms = B.members(tit).slice();
+        // Quienes confirmaron o siguen pendientes cuentan como asistentes; solo los que dijeron "no" quedan fuera
+        const att = B.attendingIdx(tit).slice();
+        const offsets = {};
+        others.forEach((o) => {
+          offsets[o.id] = ms.length;
+          const oms = B.members(o);
+          B.attendingIdx(o).forEach((i) => att.push(ms.length + i));
+          oms.forEach((n) => ms.push(n));
+        });
+        const anySi = list.some((g) => g.status === 'si');
+        const allNo = list.every((g) => g.status === 'no');
+        const uniq = (arr) => Array.from(new Set(arr.filter(Boolean)));
+        const merged = Object.assign({}, tit, {
+          invited: ms.length, companionNames: ms.slice(1).join(', '),
+          status: anySi ? 'si' : (allNo ? 'no' : 'pendiente'), attendees: anySi ? att.join(',') : '', companions: anySi ? Math.max(0, att.length - 1) : 0,
+          phone: uniq(list.flatMap((g) => B.phoneList(g.phone))).join(', '),
+          diet: uniq(list.map((g) => g.diet)).join(', '), cabin: uniq(list.map((g) => g.cabin)).join(' / '),
+          comments: uniq(list.map((g) => g.comments)).join(' | '), notes: uniq(list.map((g) => g.notes)).join(' | '),
+          invitedAt: list.map((g) => g.invitedAt).filter(Boolean).sort()[0] || ''
+        });
+        closeModal();
+        others.forEach((o) => remapSeats(o.id, (oi) => titId + '#' + (offsets[o.id] + oi)));
+        S.selecting = false; S.selected = new Set();
+        saveGuests(merged, true).then(() => deleteGuests(others.map((o) => o.id))).then(() => B.toast('✓ Familia unida: ' + esc(tit.name) + ' (' + ms.length + ' personas)', 'ok', 3500));
+      };
+    });
   }
 
   /* -------------------- Pegar lista -------------------- */
@@ -480,11 +616,12 @@
   function peopleRows() {
     const rows = [];
     S.guests.forEach((g) => {
-      const n = Math.max(partySize(g), g.status === 'no' ? 0 : 1);
-      for (let i = 0; i < n; i++) {
+      const att = B.attendingIdx(g);
+      B.members(g).forEach((nm, i) => {
         const r = tableOf(g.id + '#' + i);
-        rows.push({ 'Persona': memberName(g, i), 'Invitación de': g.name, 'Grupo / Familia': g.group, 'Asistencia': STATUS_LABEL[g.status], 'Mesa': r ? r.table.name : '', 'Asiento': r ? r.seat + 1 : '', 'Restricciones': i === 0 ? g.diet : '' });
-      }
+        const st = g.status === 'si' ? (att.includes(i) ? 'Confirmado' : 'No asiste') : STATUS_LABEL[g.status];
+        rows.push({ 'Persona': nm, 'Invitación de': g.name, 'Categoría': g.group, 'Asistencia': st, 'Mesa': r ? r.table.name : '', 'Asiento': r ? r.seat + 1 : '', 'Restricciones': i === 0 ? g.diet : '' });
+      });
     });
     return rows;
   }
@@ -557,11 +694,17 @@
     if ($('#nativeShare')) $('#nativeShare').onclick = () => navigator.share({ title: S.config.name1 + ' & ' + S.config.name2, text, url }).catch(() => {});
 
     const f = S.sendFilter;
-    const list = S.guests.filter((g) => f === 'all' || (f === 'unsent' ? !g.invitedAt : g.status === 'pendiente')).sort((a, b) => a.name.localeCompare(b.name));
-    $('#sendList').innerHTML = list.length ? list.map((g) => '<div class="li"><div class="t"><b>' + esc(g.name) + '</b><small>' + (g.phone ? '📱 ' + esc(g.phone) : 'Sin teléfono: elegirás el contacto en WhatsApp') + (g.invitedAt ? ' · ✓ enviada' : '') + ' · ' + STATUS_LABEL[g.status] + '</small></div>' +
-      '<div class="gactions"><button class="btn btn-sm" data-copy="' + g.id + '" title="Copiar enlace personal">⧉</button><button class="btn btn-wa btn-sm" data-wa="' + g.id + '">Enviar</button></div></div>').join('')
+    const list = S.guests.filter((g) => f === 'all' || (f === 'unsent' ? !g.invitedAt : f === 'sent' ? !!g.invitedAt : g.status === 'pendiente'))
+      .sort((a, b) => (f === 'sent' ? String(b.invitedAt).localeCompare(String(a.invitedAt)) : 0) || a.name.localeCompare(b.name));
+    const sentN = S.guests.filter((g) => g.invitedAt).length;
+    $('#sentSummary').innerHTML = '<b>' + sentN + '</b> de ' + S.guests.length + ' invitaciones enviadas por WhatsApp.';
+    $('#sendList').innerHTML = list.length ? list.map((g) => '<div class="li"><div class="t"><b>' + esc(g.name) + '</b><small>' + (g.phone ? '📱 ' + esc(g.phone) : 'Sin teléfono: elegirás el contacto en WhatsApp') + (g.invitedAt ? ' · ✓ enviada ' + esc(fmtDate(g.invitedAt)) : '') + ' · ' + STATUS_LABEL[g.status] + '</small></div>' +
+      '<div class="gactions">' + (g.invitedAt ? '<button class="btn btn-sm" data-unsent="' + g.id + '" title="Marcar como NO enviada">↺</button>' : '<button class="btn btn-sm" data-mark="' + g.id + '" title="Ya se la mandé por otro lado: marcar como enviada">✓</button>') +
+      '<button class="btn btn-sm" data-copy="' + g.id + '" title="Copiar enlace personal">⧉</button><button class="btn btn-wa btn-sm" data-wa="' + g.id + '">' + (g.invitedAt ? 'Reenviar' : 'Enviar') + '</button></div></div>').join('')
       : '<div class="empty">¡Nada pendiente aquí! 🎉</div>';
     $$('#sendList [data-wa]').forEach((b) => { b.onclick = () => sendInvite(b.dataset.wa); });
+    $$('#sendList [data-mark]').forEach((b) => { b.onclick = () => { const g = S.guests.find((x) => x.id === b.dataset.mark); saveGuests(Object.assign({}, g, { invitedAt: new Date().toISOString() }), true); }; });
+    $$('#sendList [data-unsent]').forEach((b) => { b.onclick = () => { const g = S.guests.find((x) => x.id === b.dataset.unsent); saveGuests(Object.assign({}, g, { invitedAt: '' }), true); }; });
     $$('#sendList [data-copy]').forEach((b) => { b.onclick = async () => { const g = S.guests.find((x) => x.id === b.dataset.copy); await B.copyText(B.fillTemplate(S.config, S.config.inviteTemplate, g)); B.toast('Mensaje con enlace copiado ✓', 'ok'); }; });
     $$('#sendFilters button').forEach((b) => { b.onclick = () => { S.sendFilter = b.dataset.s; $$('#sendFilters button').forEach((x) => x.classList.toggle('on', x === b)); renderShare(); }; });
   }

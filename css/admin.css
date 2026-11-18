@@ -298,3 +298,21 @@ code { background: var(--bg); padding: 1px 6px; border-radius: 6px; font-size: .
 .fp { background-size: cover; background-repeat: no-repeat; border-radius: 8px; border: 1px solid var(--line); }
 .fp.desk { width: 200px; height: 112px; }
 .fp.phone { width: 62px; height: 112px; }
+
+/* Familias */
+.fam { border: 1px solid var(--line); border-radius: 12px; padding: 10px; background: #fff; }
+.fam .lbl { display: block; font-size: .85rem; font-weight: 600; margin-bottom: 6px; }
+.famrow { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+.famrow .att input { width: 22px; height: 22px; accent-color: var(--ok); margin: 0; }
+.famrow .mname { flex: 1; min-width: 0; padding: 8px 10px; }
+.famrow .tit { font-size: .75rem; color: var(--muted); padding: 0 6px; }
+.fam-actions { margin: 4px 0 6px; }
+.chk { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.chk input { width: 18px; height: 18px; margin: 0; }
+.gfam { grid-column: 2 / -1; font-size: .8rem; color: var(--muted); margin-top: -4px; }
+.gcard.picked { border-color: var(--ink); box-shadow: 0 0 0 2px var(--ink) inset; }
+.gcard[data-pick] { cursor: pointer; }
+.pickbox { width: 22px; height: 22px; margin: 0 9px; accent-color: var(--ink); pointer-events: none; }
+.merge-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--ink); color: #fff; padding: 8px 12px; border-radius: 12px; margin-bottom: 8px; font-size: .88rem; }
+.merge-bar span { flex: 1; }
+.merge-bar .btn:not(.btn-primary) { background: rgba(255, 255, 255, .15); color: #fff; border-color: transparent; }

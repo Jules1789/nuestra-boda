@@ -196,7 +196,17 @@ input:focus, select:focus, textarea:focus { outline: 2px solid color-mix(in srgb
 .place h3 { font-size: 1.7rem; }
 .place > .muted { margin: 4px 0 14px; }
 .between { margin: 26px 0 0; font-family: var(--serif); font-style: italic; font-size: 1.2rem; color: var(--muted); }
-@media (min-width: 900px) { .places { grid-template-columns: 1fr 1fr; gap: 28px; } .places .map-wrap { aspect-ratio: 4/3; } .between { display: none; } }
+@media (min-width: 900px) {
+  /* Ceremonia y fiesta lado a lado: títulos, direcciones, mapas y botones siempre a la misma altura */
+  .places { grid-template-columns: 1fr 1fr; gap: 0 28px; align-items: start; }
+  .places .place { display: grid; grid-template-rows: subgrid; grid-row: span 4; }
+  .places .place > .muted { align-self: start; }
+  .places .map-wrap { aspect-ratio: 4/3; align-self: start; }
+  .between { display: none; }
+}
+@supports not (grid-template-rows: subgrid) {
+  @media (min-width: 900px) { .places .place > .muted { min-height: 3.4em; } }
+}
 
 /* Separadores campiranos (pinos, cercas, montañas) */
 .divider { display: block; width: 100%; height: clamp(70px, 11vw, 130px); margin: 0 auto; overflow: visible; pointer-events: none; }
@@ -254,3 +264,17 @@ input:focus, select:focus, textarea:focus { outline: 2px solid color-mix(in srgb
 .party-list { list-style: none; padding: 0; margin: 0 0 8px; display: grid; gap: 6px; }
 .party-list li { padding: 8px 12px; background: #fff; border: 1px solid var(--line); border-radius: 10px; font-weight: 500; }
 .party-list li:has(input) { padding: 0; border: 0; background: none; }
+
+/* Confirmación por familia */
+.who { background: color-mix(in srgb, var(--accent) 8%, #fff); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin-bottom: 18px; display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+.who b { font-weight: 600; }
+.who button { border: 0; background: none; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; font-size: .88rem; white-space: nowrap; }
+.member-checks { display: grid; gap: 8px; margin-bottom: 10px; }
+.mcheck { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; }
+.mcheck input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); flex: none; margin: 0; }
+.mcheck .nm { flex: 1; font-weight: 500; }
+.mcheck .nm input { font-weight: 400; padding: 8px 10px; }
+.mcheck.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, #fff); }
+.none-check { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1px dashed var(--line); border-radius: 12px; cursor: pointer; color: var(--muted); }
+.none-check input { width: 20px; height: 20px; margin: 0; accent-color: var(--bad); }
+.field.error input[type=tel] { border-color: var(--bad); }

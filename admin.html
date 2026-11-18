@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/admin.css?v=7">
+  <link rel="stylesheet" href="css/admin.css?v=8">
 </head>
 <body>
   <!-- Acceso -->
@@ -64,6 +64,7 @@
           <div class="tb-buttons">
             <button class="btn btn-primary" id="btnAddGuest">＋ Invitado</button>
             <button class="btn" id="btnPaste">📋 Pegar lista</button>
+            <button class="btn" id="btnMerge" title="Juntar varias invitaciones en una sola familia">🔗 Unir en familia</button>
             <div class="dropdown">
               <button class="btn" id="btnExport">⇩ Exportar</button>
               <div class="menu" id="exportMenu" hidden>
@@ -81,9 +82,11 @@
           <button data-f="no">No asisten</button>
           <button data-f="diet">Con restricción</button>
           <button data-f="change">Cambios</button>
-          <button data-f="unsent">Sin invitación enviada</button>
+          <button data-f="sent">Invitación enviada</button>
+          <button data-f="unsent">Sin enviar</button>
           <select id="gGroupFilter"><option value="">Todos los grupos</option></select>
         </div>
+        <div class="merge-bar" id="mergeBar" hidden><span>Seleccionadas: <b id="mergeCount">0</b> · toca las invitaciones que forman una familia</span><button class="btn btn-sm" id="btnMergeCancel">Cancelar</button><button class="btn btn-primary btn-sm" id="btnMergeGo" disabled>Unir en una familia</button></div>
         <p class="muted small" id="gCount"></p>
         <div id="guestList" class="guest-list"></div>
       </section>
@@ -103,9 +106,11 @@
         </div>
         <div class="panel">
           <h3>Enviar invitaciones por WhatsApp</h3>
-          <p class="muted small">Un toque abre WhatsApp con el mensaje y el enlace personal ya escritos. Se marca como “enviada”.</p>
+          <p class="muted small">Un toque abre WhatsApp con el mensaje y el enlace personal ya escritos. Se marca como “enviada”. Con ✓ marcas las que mandaste por otro lado.</p>
+          <p class="small" id="sentSummary"></p>
           <div class="filters" id="sendFilters">
             <button data-s="unsent" class="on">Sin enviar</button>
+            <button data-s="sent">Enviadas</button>
             <button data-s="pendiente">Sin responder</button>
             <button data-s="all">Todos</button>
           </div>
@@ -133,10 +138,10 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" defer></script>
-  <script src="js/config.js?v=7"></script>
-  <script src="js/common.js?v=7"></script>
-  <script src="js/plano.js?v=7"></script>
-  <script src="js/admin.js?v=7"></script>
+  <script src="js/config.js?v=8"></script>
+  <script src="js/common.js?v=8"></script>
+  <script src="js/plano.js?v=8"></script>
+  <script src="js/admin.js?v=8"></script>
   <script>
     // Si los archivos del panel no cargaron (por ejemplo, al abrirlo como archivo suelto), avisamos en vez de quedarnos en blanco
     if (!window.Admin) { var w = document.getElementById('loadWarn'); if (w) w.hidden = false; }

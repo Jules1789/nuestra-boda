@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/site.css?v=7">
+  <link rel="stylesheet" href="css/site.css?v=8">
 </head>
 <body>
   <div id="loading" class="loading"><div class="rings"></div></div>
@@ -181,58 +181,61 @@
       <p class="sub" id="rsvpSub">Nos ayudará mucho saber si nos acompañas.</p>
 
       <form id="rsvpForm" class="rsvp-form" novalidate>
-        <label class="field">
-          <span>Tu correo electrónico</span>
-          <input id="fEmail" name="email" type="email" inputmode="email" autocomplete="email" required placeholder="nombre@correo.com">
-          <small class="muted">Con tu correo puedes regresar cuando quieras y cambiar tu respuesta.</small>
-        </label>
-
-        <label class="field">
-          <span>Tu nombre completo</span>
-          <input id="fName" name="name" autocomplete="name" required placeholder="Nombre y apellido">
-        </label>
-
-        <fieldset class="field">
-          <legend>¿Nos acompañas?</legend>
-          <div class="choice">
-            <label><input type="radio" name="attending" value="si" required><span>🥂 ¡Sí, ahí estaré!</span></label>
-            <label><input type="radio" name="attending" value="no"><span>💌 No podré asistir</span></label>
-          </div>
-        </fieldset>
-
-        <div id="yesFields" hidden>
-          <div class="field party" id="party"></div>
-
-          <fieldset class="field">
-            <legend>¿Alguna restricción alimentaria?</legend>
-            <div class="chips" id="dietChips">
-              <label><input type="checkbox" value="Vegetariano"><span>Vegetariano</span></label>
-              <label><input type="checkbox" value="Vegano"><span>Vegano</span></label>
-              <label><input type="checkbox" value="Sin gluten"><span>Sin gluten</span></label>
-              <label><input type="checkbox" value="Sin lactosa"><span>Sin lactosa</span></label>
-              <label><input type="checkbox" value="Alergia a mariscos"><span>Alergia a mariscos</span></label>
-              <label><input type="checkbox" value="Alergia a nueces"><span>Alergia a nueces</span></label>
-            </div>
-            <input id="fDietOther" placeholder="Otra (escríbela aquí)">
-          </fieldset>
-
+        <!-- Paso 1: celular (dos veces) -->
+        <div id="stepPhone">
           <label class="field">
-            <span>🎵 ¿Qué canción no puede faltar?</span>
-            <input id="fSong" placeholder="Canción y artista (opcional)">
+            <span>Tu número de celular</span>
+            <input id="fPhone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="10 dígitos" maxlength="18">
           </label>
+          <label class="field">
+            <span>Confírmalo</span>
+            <input id="fPhone2" type="tel" inputmode="numeric" autocomplete="off" placeholder="Escríbelo otra vez" maxlength="18">
+            <small class="muted" id="phoneHelp">Con tu número podrás regresar y cambiar tu respuesta cuando quieras.</small>
+          </label>
+          <label class="field" id="nameField" hidden>
+            <span>Tu nombre completo</span>
+            <input id="fName" autocomplete="name" placeholder="Nombre y apellido">
+            <small class="muted">No encontramos ese número. Escribe tu nombre para buscar tu invitación.</small>
+          </label>
+          <button class="btn btn-primary btn-block" type="button" id="btnContinue">Continuar</button>
         </div>
 
-        <label class="field">
-          <span>Tu WhatsApp (opcional)</span>
-          <input id="fPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="Para avisarte cualquier cambio">
-        </label>
+        <!-- Paso 2: quiénes de la familia asistirán -->
+        <div id="stepAnswer" hidden>
+          <div class="who" id="who"></div>
+          <fieldset class="field">
+            <legend id="checksLegend">¿Quiénes asistirán?</legend>
+            <div class="member-checks" id="memberChecks"></div>
+            <label class="none-check"><input type="checkbox" id="noneCheck"><span>💌 No podremos asistir</span></label>
+          </fieldset>
 
-        <label class="field">
-          <span>Mensaje para los novios (opcional)</span>
-          <textarea id="fComments" rows="3" placeholder="Unas palabras, una duda, lo que quieras…"></textarea>
-        </label>
+          <div id="yesFields">
+            <fieldset class="field">
+              <legend>¿Alguna restricción alimentaria?</legend>
+              <div class="chips" id="dietChips">
+                <label><input type="checkbox" value="Vegetariano"><span>Vegetariano</span></label>
+                <label><input type="checkbox" value="Vegano"><span>Vegano</span></label>
+                <label><input type="checkbox" value="Sin gluten"><span>Sin gluten</span></label>
+                <label><input type="checkbox" value="Sin lactosa"><span>Sin lactosa</span></label>
+                <label><input type="checkbox" value="Alergia a mariscos"><span>Alergia a mariscos</span></label>
+                <label><input type="checkbox" value="Alergia a nueces"><span>Alergia a nueces</span></label>
+              </div>
+              <input id="fDietOther" placeholder="Otra (escríbela aquí)">
+            </fieldset>
 
-        <button class="btn btn-primary btn-block" type="submit" id="rsvpBtn">Enviar confirmación</button>
+            <label class="field">
+              <span>🎵 ¿Qué canción no puede faltar?</span>
+              <input id="fSong" placeholder="Canción y artista (opcional)">
+            </label>
+          </div>
+
+          <label class="field">
+            <span>Mensaje para los novios (opcional)</span>
+            <textarea id="fComments" rows="3" placeholder="Unas palabras, una duda, lo que quieras…"></textarea>
+          </label>
+
+          <button class="btn btn-primary btn-block" type="submit" id="rsvpBtn">Enviar confirmación</button>
+        </div>
         <p class="deadline muted" id="deadline"></p>
       </form>
 
@@ -266,8 +269,8 @@
     <button class="lb-nav next" id="lbNext" aria-label="Siguiente">›</button>
   </div>
 
-  <script src="js/config.js?v=7"></script>
-  <script src="js/common.js?v=7"></script>
-  <script src="js/site.js?v=7"></script>
+  <script src="js/config.js?v=8"></script>
+  <script src="js/common.js?v=8"></script>
+  <script src="js/site.js?v=8"></script>
 </body>
 </html>

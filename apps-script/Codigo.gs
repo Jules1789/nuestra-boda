@@ -44,7 +44,8 @@ var COLUMNAS = [
   ['invitedAt', 'Invitación enviada'],
   ['updated', 'Última actualización'],
   ['change', 'Cambio de respuesta'],
-  ['notes', 'Notas privadas']
+  ['notes', 'Notas privadas'],
+  ['attendees', 'Asistentes (posición en el grupo)']
 ];
 
 var ESTADO_A_TEXTO = { si: 'Confirmado', no: 'No asiste', pendiente: 'Pendiente' };
@@ -183,7 +184,7 @@ function enrutar_(p) {
   var accion = p.action || 'public';
   if (accion === 'public') return publico_(p);
   if (accion === 'rsvp') return conBloqueo_(function () { return rsvp_(p); });
-  if (accion === 'lookup') return buscarPorCorreo_(p);
+  if (accion === 'lookup') return buscar_(p);
 
   // --- Todo lo demás es solo para organizadores ---
   var cfg = leerConfig_();
@@ -293,6 +294,8 @@ function escribirInvitados_(lista) {
       return v == null ? '' : v;
     });
   });
+  // Títulos siempre al día (por si se agregó una columna nueva)
+  sh.getRange(1, 1, 1, COLUMNAS.length).setValues([COLUMNAS.map(function (c) { return c[1]; })]);
   if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, sh.getMaxColumns()).clearContent();
   if (filas.length) {
     var rango = sh.getRange(2, 1, filas.length, COLUMNAS.length);
@@ -338,26 +341,50 @@ function normalizar_(s) {
   return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
 }
 
-function personas_(g) {
-  if (g.status === 'no') return 0;
-  if (g.status === 'si') return 1 + (parseInt(g.companions, 10) || 0);
-  return Math.max(1, parseInt(g.invited, 10) || 1);
+// Integrantes de la invitación (familia): titular + acompañantes, tantos como lugares asignados
+function miembros_(g) {
+  var n = Math.max(1, parseInt(g.invited, 10) || 1);
+  var extra = String(g.companionNames || '').split(/[,;\n]/).map(function (x) { return x.trim(); }).filter(String);
+  var primero = String(g.name || '').split(' ')[0];
+  var out = [g.name];
+  for (var i = 1; i < n; i++) out.push(extra[i - 1] || ('Acompañante ' + i + ' de ' + primero));
+  return out;
 }
+
+function esMarcador_(v) { return !v || /^acompa[nñ]ante/i.test(v) || /^(esposa|esposo|novia|novio|pareja) de /i.test(v); }
+
+// Posiciones de quienes asistirán (0 = titular). Pendiente = todos (para planear); No = nadie.
+function asistentesIdx_(g) {
+  if (g.status === 'no') return [];
+  var n = miembros_(g).length, todos = [];
+  for (var i = 0; i < n; i++) todos.push(i);
+  if (g.status !== 'si') return todos;
+  var raw = String(g.attendees == null ? '' : g.attendees).trim();
+  if (raw) {
+    var marcados = {};
+    raw.split(/[,;\s]+/).forEach(function (x) { var k = parseInt(x, 10); if (k >= 0 && k < n) marcados[k] = true; });
+    return todos.filter(function (k) { return marcados[k]; });
+  }
+  return todos.slice(0, Math.min(n, 1 + (parseInt(g.companions, 10) || 0)));
+}
+
+function personas_(g) { return asistentesIdx_(g).length; }
+
+// Celulares: se comparan por los últimos 10 dígitos. Un grupo puede tener varios (separados por coma).
+function normTel_(t) { var d = String(t || '').replace(/\D/g, ''); return d.length >= 10 ? d.slice(-10) : ''; }
+function telefonos_(s) { return String(s || '').split(/[,;\/\n]+/).map(normTel_).filter(String); }
 
 /* ------------------------------------------------------------------ */
 /*  Web pública                                                         */
 /* ------------------------------------------------------------------ */
 
-// Lo que un invitado puede ver de su propia invitación (sin teléfono ni notas privadas)
+// Lo que un invitado puede ver de su propia invitación (sin teléfonos ni notas privadas)
 function invitadoPublico_(g) {
   return {
-    id: g.id, name: g.name, invited: g.invited, status: g.status, companions: g.companions, email: g.email,
-    companionNames: g.companionNames, diet: g.diet, comments: g.comments, song: g.song, cabin: g.cabin
+    id: g.id, name: g.name, invited: g.invited, status: g.status, members: miembros_(g),
+    attendees: asistentesIdx_(g).join(','), diet: g.diet, comments: g.comments, song: g.song, cabin: g.cabin
   };
 }
-
-function normCorreo_(e) { return String(e || '').trim().toLowerCase(); }
-function esCorreo_(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e); }
 
 function publico_(p) {
   var cfg = leerConfig_();
@@ -370,59 +397,68 @@ function publico_(p) {
   return res;
 }
 
-// El invitado escribe su correo y recupera su respuesta para cambiarla
-function buscarPorCorreo_(p) {
-  var correo = normCorreo_(p.email);
-  if (!esCorreo_(correo)) return { ok: false, error: 'Correo no válido' };
-  var g = leerInvitados_().filter(function (x) { return normCorreo_(x.email) === correo; })[0];
+// Encuentra la invitación: 1) enlace personal  2) celular de alguien del grupo  3) nombre de alguien del grupo
+function encontrar_(lista, p) {
+  var g = null;
+  if (p.g) g = lista.filter(function (x) { return x.id === p.g; })[0] || null;
+  var tel = normTel_(p.phone);
+  if (!g && tel) g = lista.filter(function (x) { return telefonos_(x.phone).indexOf(tel) >= 0; })[0] || null;
+  var n = normalizar_(p.name);
+  if (!g && n) g = lista.filter(function (x) { return miembros_(x).some(function (m) { return normalizar_(m) === n; }); })[0] || null;
+  return g;
+}
+
+function buscar_(p) {
+  var g = encontrar_(leerInvitados_(), p);
   return { ok: true, guest: g ? invitadoPublico_(g) : null };
 }
 
 function rsvp_(p) {
-  var nombre = String(p.name || '').trim();
-  if (!nombre) return { ok: false, error: 'Falta el nombre' };
-  var correo = normCorreo_(p.email);
-  if (!esCorreo_(correo)) return { ok: false, error: 'Escribe un correo válido' };
+  var tel = normTel_(p.phone);
+  if (!tel) return { ok: false, error: 'Escribe tu número de celular (10 dígitos)' };
   var lista = leerInvitados_();
-  var g = null;
-  // 1) enlace personal  2) mismo correo  3) mismo nombre, solo si esa invitación no tiene otro correo
-  if (p.g) g = lista.filter(function (x) { return x.id === p.g; })[0] || null;
-  if (!g) g = lista.filter(function (x) { return normCorreo_(x.email) === correo; })[0] || null;
-  if (!g) {
-    var n = normalizar_(nombre);
-    g = lista.filter(function (x) { return normalizar_(x.name) === n && (!x.email || normCorreo_(x.email) === correo); })[0] || null;
-  }
+  var g = encontrar_(lista, p);
   var ahora = new Date().toISOString();
-  var asiste = p.attending === true || p.attending === 'si' || p.attending === 'true';
   var esNuevo = !g;
-  // Boda privada: los lugares los asignan los novios. Quien está en la lista confirma por toda su
-  // invitación; alguien que no está en la lista solo puede confirmar por sí mismo.
-  var acomp = asiste && g ? Math.max(0, (parseInt(g.invited, 10) || 1) - 1) : 0;
-
   if (esNuevo) {
-    g = { id: nuevoId_(), name: nombre, group: '', phone: '', email: '', invited: 1 + acomp, status: 'pendiente',
-      companions: 0, companionNames: '', diet: '', comments: '', song: '', source: 'web', invitedAt: '', updated: ahora, change: '', notes: '' };
+    var nombre = String(p.name || '').trim();
+    if (!nombre) return { ok: false, error: 'Falta el nombre' };
+    // Alguien que no está en la lista solo responde por sí mismo
+    g = { id: nuevoId_(), name: nombre, group: '', phone: '', email: '', invited: 1, status: 'pendiente', companions: 0,
+      companionNames: '', attendees: '', diet: '', comments: '', song: '', source: 'web', invitedAt: '', updated: ahora, change: '', notes: '' };
     lista.push(g);
   }
-  var antesEstado = g.status, antesPersonas = personas_(g);
+  var antesEstado = g.status, antes = asistentesIdx_(g);
   var sentado = estaSentado_(g.id);
 
-  g.status = asiste ? 'si' : 'no';
-  g.companions = acomp;
-  // Si dice que no viene, NO se borran los nombres de su invitación (los necesitas en tu lista)
-  if (asiste && String(p.companionNames || '').trim()) g.companionNames = String(p.companionNames).trim();
+  // Nombres que escribieron para los "Acompañante de…"
+  var ms = miembros_(g);
+  (p.memberNames || []).forEach(function (nm, i) {
+    nm = String(nm || '').trim();
+    if (i > 0 && i < ms.length && nm && esMarcador_(ms[i])) ms[i] = nm;
+  });
+  g.companionNames = ms.slice(1).join(', ');
+
+  // Quiénes de la familia asistirán (casillas). Nadie marcado = "no asistiremos".
+  var vistos = {}, idx = [];
+  (p.attendees || []).forEach(function (x) { var k = parseInt(x, 10); if (k >= 0 && k < ms.length && !vistos[k]) { vistos[k] = true; idx.push(k); } });
+  idx.sort(function (a, b) { return a - b; });
+  g.status = idx.length ? 'si' : 'no';
+  g.attendees = idx.join(',');
+  g.companions = Math.max(0, idx.length - 1);
   g.diet = String(p.diet || '').trim();
   g.comments = String(p.comments || '').trim();
   g.song = String(p.song || '').trim();
-  if (p.phone) g.phone = String(p.phone).trim();
-  g.email = correo;
-  if (g.source === 'web' && 1 + acomp > g.invited) g.invited = 1 + acomp;
+  // El celular queda ligado a este grupo
+  var tels = telefonos_(g.phone);
+  if (tels.indexOf(tel) < 0) { tels.push(tel); g.phone = tels.join(', '); }
   g.updated = ahora;
 
-  var cambio = antesEstado !== g.status || antesPersonas !== personas_(g);
+  var ahoraIdx = asistentesIdx_(g);
+  var cambio = antesEstado !== g.status || antes.join(',') !== ahoraIdx.join(',');
   if (!esNuevo && cambio && (antesEstado !== 'pendiente' || sentado)) {
-    g.change = 'Antes: ' + ESTADO_A_TEXTO[antesEstado] + ' (' + antesPersonas + ') → Ahora: ' +
-      ESTADO_A_TEXTO[g.status] + ' (' + personas_(g) + ')';
+    g.change = 'Antes: ' + ESTADO_A_TEXTO[antesEstado] + ' (' + antes.length + ') → Ahora: ' +
+      ESTADO_A_TEXTO[g.status] + ' (' + ahoraIdx.length + ')';
   }
   escribirInvitados_(lista);
   return { ok: true, id: g.id, guest: invitadoPublico_(g) };
@@ -477,8 +513,7 @@ function escribirMesasLegibles_(plano) {
         var g = invitados[partes[0]];
         var n = parseInt(partes[1], 10) || 0;
         if (g) {
-          var acomp = String(g.companionNames || '').split(/[,;\n]/).map(function (x) { return x.trim(); }).filter(String);
-          nombre = n === 0 ? g.name : (acomp[n - 1] || ('Acompañante ' + n + ' de ' + g.name));
+          nombre = miembros_(g)[n] || ('Integrante ' + (n + 1) + ' de ' + g.name);
           grupo = g.group;
           estado = ESTADO_A_TEXTO[g.status] || '';
         }
