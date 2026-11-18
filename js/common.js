@@ -407,29 +407,36 @@
     if (action === 'rsvp') {
       const name = String(p.name || '').trim();
       if (!name) return { ok: false, error: 'Falta el nombre' };
-      let g = (p.g && db.guests.find((x) => x.id === p.g)) || db.guests.find((x) => norm(x.name) === norm(name));
+      const email = String(p.email || '').trim().toLowerCase();
+      let g = (p.g && db.guests.find((x) => x.id === p.g)) || (email && db.guests.find((x) => String(x.email || '').toLowerCase() === email)) ||
+        db.guests.find((x) => norm(x.name) === norm(name) && (!x.email || String(x.email).toLowerCase() === email));
       const isNew = !g;
       const attending = p.attending === true || p.attending === 'si';
-      let comp = attending ? Math.max(0, Math.min(20, parseInt(p.companions, 10) || 0)) : 0;
-      if (g && g.source !== 'web' && g.invited > 0 && comp > g.invited - 1) comp = g.invited - 1;
+      const comp = attending && g ? Math.max(0, (parseInt(g.invited, 10) || 1) - 1) : 0;
       if (isNew) {
         g = { id: newId(), name, group: '', phone: '', email: '', invited: 1 + comp, status: 'pendiente', companions: 0, companionNames: '', diet: '', comments: '', cabin: '', song: '', source: 'web', invitedAt: '', updated: '', change: '', notes: '' };
         db.guests.push(g);
       }
       const prevS = g.status, prevP = partySize(g), seated = isSeated(g.id);
       Object.assign(g, {
-        status: attending ? 'si' : 'no', companions: comp, companionNames: String(p.companionNames || '').trim(),
+        status: attending ? 'si' : 'no', companions: comp, companionNames: attending && String(p.companionNames || '').trim() ? String(p.companionNames).trim() : g.companionNames,
         diet: String(p.diet || '').trim(), comments: String(p.comments || '').trim(), song: String(p.song || '').trim(),
         updated: new Date().toISOString()
       });
       if (p.phone) g.phone = String(p.phone).trim();
+      if (email) g.email = email;
       if (g.source === 'web' && 1 + comp > g.invited) g.invited = 1 + comp;
       const changed = prevS !== g.status || prevP !== partySize(g);
       if (!isNew && changed && (prevS !== 'pendiente' || seated)) {
         g.change = 'Antes: ' + STATUS_LABEL[prevS] + ' (' + prevP + ') → Ahora: ' + STATUS_LABEL[g.status] + ' (' + partySize(g) + ')';
       }
       demoSave(db);
-      return ok({ id: g.id });
+      return ok({ id: g.id, guest: g });
+    }
+    if (action === 'lookup') {
+      const e = String(p.email || '').trim().toLowerCase();
+      const g = db.guests.find((x) => e && String(x.email || '').toLowerCase() === e);
+      return ok({ guest: g || null });
     }
     if (String(p.key) !== String(db.config.adminPin || '1234')) return { ok: false, error: 'Clave incorrecta' };
     switch (action) {

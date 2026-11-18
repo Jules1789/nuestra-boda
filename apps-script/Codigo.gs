@@ -183,6 +183,7 @@ function enrutar_(p) {
   var accion = p.action || 'public';
   if (accion === 'public') return publico_(p);
   if (accion === 'rsvp') return conBloqueo_(function () { return rsvp_(p); });
+  if (accion === 'lookup') return buscarPorCorreo_(p);
 
   // --- Todo lo demás es solo para organizadores ---
   var cfg = leerConfig_();
@@ -347,29 +348,49 @@ function personas_(g) {
 /*  Web pública                                                         */
 /* ------------------------------------------------------------------ */
 
+// Lo que un invitado puede ver de su propia invitación (sin teléfono ni notas privadas)
+function invitadoPublico_(g) {
+  return {
+    id: g.id, name: g.name, invited: g.invited, status: g.status, companions: g.companions, email: g.email,
+    companionNames: g.companionNames, diet: g.diet, comments: g.comments, song: g.song, cabin: g.cabin
+  };
+}
+
+function normCorreo_(e) { return String(e || '').trim().toLowerCase(); }
+function esCorreo_(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e); }
+
 function publico_(p) {
   var cfg = leerConfig_();
   CONFIG_PRIVADA.forEach(function (k) { delete cfg[k]; });
   var res = { ok: true, config: cfg };
   if (p.g) {
     var g = leerInvitados_().filter(function (x) { return x.id === p.g; })[0];
-    if (g) res.guest = {
-      id: g.id, name: g.name, invited: g.invited, status: g.status, companions: g.companions,
-      companionNames: g.companionNames, diet: g.diet, comments: g.comments, song: g.song, cabin: g.cabin
-    };
+    if (g) res.guest = invitadoPublico_(g);
   }
   return res;
+}
+
+// El invitado escribe su correo y recupera su respuesta para cambiarla
+function buscarPorCorreo_(p) {
+  var correo = normCorreo_(p.email);
+  if (!esCorreo_(correo)) return { ok: false, error: 'Correo no válido' };
+  var g = leerInvitados_().filter(function (x) { return normCorreo_(x.email) === correo; })[0];
+  return { ok: true, guest: g ? invitadoPublico_(g) : null };
 }
 
 function rsvp_(p) {
   var nombre = String(p.name || '').trim();
   if (!nombre) return { ok: false, error: 'Falta el nombre' };
+  var correo = normCorreo_(p.email);
+  if (!esCorreo_(correo)) return { ok: false, error: 'Escribe un correo válido' };
   var lista = leerInvitados_();
   var g = null;
+  // 1) enlace personal  2) mismo correo  3) mismo nombre, solo si esa invitación no tiene otro correo
   if (p.g) g = lista.filter(function (x) { return x.id === p.g; })[0] || null;
+  if (!g) g = lista.filter(function (x) { return normCorreo_(x.email) === correo; })[0] || null;
   if (!g) {
     var n = normalizar_(nombre);
-    g = lista.filter(function (x) { return normalizar_(x.name) === n; })[0] || null;
+    g = lista.filter(function (x) { return normalizar_(x.name) === n && (!x.email || normCorreo_(x.email) === correo); })[0] || null;
   }
   var ahora = new Date().toISOString();
   var asiste = p.attending === true || p.attending === 'si' || p.attending === 'true';
@@ -388,12 +409,13 @@ function rsvp_(p) {
 
   g.status = asiste ? 'si' : 'no';
   g.companions = acomp;
-  g.companionNames = String(p.companionNames || '').trim();
+  // Si dice que no viene, NO se borran los nombres de su invitación (los necesitas en tu lista)
+  if (asiste && String(p.companionNames || '').trim()) g.companionNames = String(p.companionNames).trim();
   g.diet = String(p.diet || '').trim();
   g.comments = String(p.comments || '').trim();
   g.song = String(p.song || '').trim();
   if (p.phone) g.phone = String(p.phone).trim();
-  if (p.email) g.email = String(p.email).trim();
+  g.email = correo;
   if (g.source === 'web' && 1 + acomp > g.invited) g.invited = 1 + acomp;
   g.updated = ahora;
 
@@ -403,7 +425,7 @@ function rsvp_(p) {
       ESTADO_A_TEXTO[g.status] + ' (' + personas_(g) + ')';
   }
   escribirInvitados_(lista);
-  return { ok: true, id: g.id };
+  return { ok: true, id: g.id, guest: invitadoPublico_(g) };
 }
 
 /* ------------------------------------------------------------------ */

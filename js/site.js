@@ -10,15 +10,17 @@
   const pageUrl = () => B.siteBaseUrl(cfg);
 
   async function init() {
+    // Enlace personal (?g=) o, si no, la invitación que respondió antes desde este celular
+    const mem = !guestId ? remembered() : null;
     try {
-      const res = await B.api('public', { g: guestId });
+      const res = await B.api('public', { g: guestId || (mem && mem.id) || '' });
       if (res && res.ok) { cfg = B.withDefaults(res.config); guest = res.guest || null; }
     } catch (e) {
       console.warn('No se pudo cargar la configuración', e);
     }
     render();
     startCountdown();
-    setupRsvp();
+    setupRsvp(!!(mem && guest));
     setupNav();
     $('#loading').classList.add('out');
   }
@@ -282,13 +284,22 @@
   }
 
   /* -------- Confirmación -------- */
-  function setupRsvp() {
-    const form = $('#rsvpForm');
-    // Boda privada: los lugares ya están contados. El invitado NO elige cuántos acompañantes lleva;
-    // confirma por toda su invitación (los lugares que le asignaron los novios).
-    const companionsFixed = guest ? Math.max(0, (parseInt(guest.invited, 10) || 1) - 1) : 0;
-    const existing = guest ? B.splitNames(guest.companionNames) : [];
-    const isPlaceholder = (v) => !v || /^acompa[nñ]ante/i.test(v) || /^(esposa|esposo|novia|novio|pareja) de /i.test(v);
+  /* -------- Confirmación (enlazada al correo) -------- */
+  const ME_KEY = 'boda_mi_respuesta';
+  const remembered = () => { try { return JSON.parse(localStorage.getItem(ME_KEY)) || null; } catch (e) { return null; } };
+  const remember = (id, email) => { try { localStorage.setItem(ME_KEY, JSON.stringify({ id, email })); } catch (e) { /* nada */ } };
+  const validEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
+  const isPlaceholder = (v) => !v || /^acompa[nñ]ante/i.test(v) || /^(esposa|esposo|novia|novio|pareja) de /i.test(v);
+  let currentId = '';
+  let companionsFixed = 0, existing = [];
+
+  // Llena el formulario con la invitación (por enlace personal, por correo o recordada en este celular)
+  function fillForm(g) {
+    guest = g || null;
+    currentId = guest ? guest.id : guestId;
+    // Boda privada: los lugares ya están contados; el invitado confirma por toda su invitación.
+    companionsFixed = guest ? Math.max(0, (parseInt(guest.invited, 10) || 1) - 1) : 0;
+    existing = guest ? B.splitNames(guest.companionNames) : [];
     const party = $('#party');
     if (!guest) {
       party.innerHTML = '<p class="party-note">Esta confirmación es <b>solo para ti</b>. Si tu invitación incluye a más personas, usa el enlace personal que te enviamos por WhatsApp.</p>';
@@ -300,69 +311,94 @@
           const v = existing[i] || '';
           return isPlaceholder(v)
             ? '<li><input data-slot="' + i + '" placeholder="Nombre de tu acompañante (opcional)"></li>'
-            : '<li data-name="' + esc(v) + '">' + esc(v) + '</li>';
+            : '<li>' + esc(v) + '</li>';
         }).join('') + '</ul><small class="muted">Si alguien de tu invitación no podrá asistir, cuéntanos en el mensaje para los novios.</small>';
     }
+    if (!guest) return;
+    $('#fName').value = guest.name;
+    if (guest.email) $('#fEmail').value = guest.email;
+    $$('input[name=attending]').forEach((r) => { r.checked = r.value === guest.status; });
+    $('#yesFields').hidden = guest.status !== 'si';
+    if (guest.status === 'si' || guest.status === 'no') $('#rsvpSub').textContent = 'Ya recibimos tu respuesta. Si algo cambió, puedes actualizarla aquí.';
+    const diets = String(guest.diet || '').split(',').map((x) => x.trim()).filter(Boolean);
+    const known = $$('#dietChips input').map((i) => i.value);
+    $$('#dietChips input').forEach((i) => { i.checked = diets.includes(i.value); });
+    $('#fDietOther').value = diets.filter((d) => !known.includes(d)).join(', ');
+    $('#fSong').value = guest.song || '';
+    $('#fComments').value = guest.comments || '';
+  }
 
+  // Si escribe un correo con el que ya respondió, traemos su respuesta para que la cambie
+  async function lookupEmail() {
+    const email = $('#fEmail').value.trim().toLowerCase();
+    if (!validEmail(email) || guestId || (guest && String(guest.email || '').toLowerCase() === email)) return;
+    try {
+      const r = await B.api('lookup', { email });
+      if (r && r.ok && r.guest) {
+        fillForm(r.guest);
+        B.toast('¡Hola, ' + esc(r.guest.name.split(' ')[0]) + '! Encontramos tu respuesta; puedes cambiarla aquí.', 'ok', 4500);
+      }
+    } catch (e) { /* sin conexión: se intentará al enviar */ }
+  }
+
+  function setupRsvp(fromMemory) {
+    const form = $('#rsvpForm');
     $$('input[name=attending]').forEach((r) => r.addEventListener('change', () => {
       $('#yesFields').hidden = !$('input[name=attending][value=si]').checked;
       r.closest('.field').classList.remove('error');
     }));
-
-    // Rellenar si ya respondió o si viene con enlace personal
-    if (guest) {
-      $('#fName').value = guest.name;
-      $('#fPhone').value = guest.phone || '';
-      if (guest.status === 'si' || guest.status === 'no') {
-        $('input[name=attending][value=' + guest.status + ']').checked = true;
-        $('#yesFields').hidden = guest.status !== 'si';
-        $('#rsvpSub').textContent = 'Ya recibimos tu respuesta. Si algo cambió, puedes actualizarla aquí.';
-      }
-      const diets = String(guest.diet || '').split(',').map((x) => x.trim()).filter(Boolean);
-      const known = $$('#dietChips input').map((i) => i.value);
-      $$('#dietChips input').forEach((i) => { i.checked = diets.includes(i.value); });
-      $('#fDietOther').value = diets.filter((d) => !known.includes(d)).join(', ');
-      $('#fSong').value = guest.song || '';
-      $('#fComments').value = guest.comments || '';
+    $('#fEmail').addEventListener('change', lookupEmail);
+    $('#fEmail').addEventListener('input', () => $('#fEmail').closest('.field').classList.remove('error'));
+    fillForm(guest);
+    // Ya respondió desde este celular: le mostramos su respuesta (con botón para cambiarla)
+    if (fromMemory && guest && (guest.status === 'si' || guest.status === 'no')) {
+      showDone(guest.status === 'si', companionsFixed, guest.name, false);
     }
 
     form.addEventListener('submit', async (ev) => {
       ev.preventDefault();
       const name = $('#fName').value.trim();
+      const email = $('#fEmail').value.trim().toLowerCase();
       const att = $('input[name=attending]:checked');
       let bad = false;
+      $('#fEmail').closest('.field').classList.toggle('error', !validEmail(email)); if (!validEmail(email)) bad = true;
       $('#fName').closest('.field').classList.toggle('error', !name); if (!name) bad = true;
       $('input[name=attending]').closest('.field').classList.toggle('error', !att); if (!att) bad = true;
-      if (bad) { B.toast('Escribe tu nombre y dinos si vienes 🙂', 'warn'); return; }
+      if (bad) { B.toast(!validEmail(email) ? 'Escribe tu correo (así podrás cambiar tu respuesta después) 🙂' : 'Escribe tu nombre y dinos si vienes 🙂', 'warn'); return; }
       const attending = att.value === 'si';
       const diet = $$('#dietChips input:checked').map((i) => i.value).concat($('#fDietOther').value.trim() ? [$('#fDietOther').value.trim()] : []).join(', ');
       const companions = attending ? companionsFixed : 0;
       // Conserva los nombres que ya tenían; solo reemplaza los "Acompañante de…" si el invitado escribió el nombre
       const companionNames = Array.from({ length: companionsFixed }, (_, i) => {
-        const typed = $('input[data-slot="' + i + '"]', party);
+        const typed = $('input[data-slot="' + i + '"]', $('#party'));
         return (typed && typed.value.trim()) || existing[i] || ('Acompañante ' + (i + 1) + ' de ' + name.split(' ')[0]);
       }).join(', ');
       const btn = $('#rsvpBtn');
       btn.disabled = true; btn.textContent = 'Enviando…';
       try {
         const res = await B.api('rsvp', {
-          g: guestId, name, attending, companions, companionNames: attending ? companionNames : '',
+          g: currentId, email, name, attending, companions, companionNames: attending ? companionNames : '',
           diet: attending ? diet : '', song: attending ? $('#fSong').value.trim() : '',
           phone: $('#fPhone').value.trim(), comments: $('#fComments').value.trim()
         });
         if (!res || !res.ok) throw new Error((res && res.error) || 'Error');
-        showDone(attending, companions, name);
+        currentId = res.id || currentId;
+        remember(currentId, email);
+        // El servidor devuelve la invitación real (por si lo encontró por nombre o correo)
+        if (res.guest) fillForm(res.guest);
+        else guest = Object.assign({}, guest || { name, invited: 1 }, { id: currentId, email, status: attending ? 'si' : 'no' });
+        showDone(attending, attending ? companionsFixed : 0, name, true);
       } catch (e) {
-        B.toast('No pudimos enviar tu respuesta. Revisa tu conexión e inténtalo de nuevo.', 'error', 5000);
+        B.toast(e.message && e.message !== 'Error' && !/fetch/i.test(e.message) ? esc(e.message) : 'No pudimos enviar tu respuesta. Revisa tu conexión e inténtalo de nuevo.', 'error', 5000);
       } finally {
         btn.disabled = false; btn.textContent = 'Enviar confirmación';
       }
     });
 
-    $('#rsvpEdit').onclick = () => { $('#rsvpDone').hidden = true; form.hidden = false; form.scrollIntoView({ behavior: 'smooth' }); };
+    $('#rsvpEdit').onclick = () => { $('#rsvpDone').hidden = true; form.hidden = false; fillForm(guest); form.scrollIntoView({ behavior: 'smooth' }); };
   }
 
-  function showDone(attending, companions, name) {
+  function showDone(attending, companions, name, scroll) {
     $('#rsvpForm').hidden = true;
     const done = $('#rsvpDone'); done.hidden = false;
     const first = name.split(' ')[0];
@@ -382,7 +418,7 @@
       $('#doneText').textContent = 'Te vamos a extrañar. Si cambian tus planes, puedes actualizar tu respuesta aquí mismo.';
       $('#doneCal').innerHTML = '';
     }
-    done.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (scroll !== false) done.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   /* -------- Navegación y animaciones -------- */
