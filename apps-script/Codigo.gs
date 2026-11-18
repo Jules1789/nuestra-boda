@@ -215,8 +215,20 @@ function leerConfig_() {
   var sh = hoja_(HOJA_CONFIG);
   var cfg = {};
   if (sh.getLastRow() < 2) return cfg;
-  sh.getRange(2, 1, sh.getLastRow() - 1, 2).getDisplayValues().forEach(function (r) {
-    if (r[0]) cfg[String(r[0]).trim()] = r[1];
+  var tz = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
+  var rango = sh.getRange(2, 1, sh.getLastRow() - 1, 2);
+  var crudos = rango.getValues(), vistos = rango.getDisplayValues();
+  crudos.forEach(function (r, i) {
+    if (!r[0]) return;
+    var v = r[1];
+    // Si Google convirtió el texto en fecha u hora, lo regresamos al formato que entiende la web
+    if (v instanceof Date) {
+      v = v.getFullYear() < 1901 ? Utilities.formatDate(v, tz, 'HH:mm')
+        : (/\d:\d/.test(vistos[i][1]) ? Utilities.formatDate(v, tz, "yyyy-MM-dd'T'HH:mm") : Utilities.formatDate(v, tz, 'yyyy-MM-dd'));
+    } else {
+      v = vistos[i][1];
+    }
+    cfg[String(r[0]).trim()] = v;
   });
   return cfg;
 }

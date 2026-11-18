@@ -131,9 +131,13 @@
 
   function zonedToDate(localStr, tz) {
     if (!localStr) return null;
-    const [d, t = '00:00'] = String(localStr).split('T');
-    const [Y, M, D] = d.split('-').map(Number);
-    const [h, m] = t.split(':').map(Number);
+    // Acepta "2027-11-13T17:00", "2027-11-13 17:00" o "13/11/2027 17:00" (como lo muestra Google Sheets)
+    const str = String(localStr).trim();
+    let Y, M, D, h = 0, m = 0, x;
+    if ((x = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s]+(\d{1,2}):(\d{2}))?/))) [, Y, M, D, h, m] = x;
+    else if ((x = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/))) [, D, M, Y, h, m] = x;
+    else return null;
+    Y = +Y; M = +M; D = +D; h = +h || 0; m = +m || 0;
     if (!Y || !M || !D) return null;
     const guess = Date.UTC(Y, M - 1, D, h || 0, m || 0);
     try {
