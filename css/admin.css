@@ -334,3 +334,35 @@ code { background: var(--bg); padding: 1px 6px; border-radius: 6px; font-size: .
 .li-img { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .li-img img { width: 84px; height: 84px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); }
 .li-noimg { width: 84px; height: 84px; border-radius: 10px; border: 1px dashed var(--line); display: grid; place-items: center; font-size: .75rem; color: var(--muted); }
+
+/* Elementos del salón en el plano */
+.itm { cursor: default; }
+.organize .itm { cursor: move; }
+.i-area { fill: color-mix(in srgb, var(--accent) 6%, transparent); stroke: color-mix(in srgb, var(--accent) 70%, #fff); stroke-width: 2; stroke-dasharray: 10 6; }
+.i-area-lbl { font: 600 13px var(--sans); fill: var(--accent); text-anchor: middle; pointer-events: none; }
+.i-wall { fill: #5b4a3a; }
+.i-window { fill: #d6ebf7; stroke: #6aa0c8; stroke-width: 2; }
+.i-window-line { stroke: #6aa0c8; stroke-width: 1.5; }
+.i-door { fill: #fff; stroke: #8a6b4a; stroke-width: 2; }
+.i-door-arc { fill: none; stroke: #8a6b4a; stroke-width: 1.5; stroke-dasharray: 4 3; }
+.i-box { fill: #f4efe6; stroke: #cbb894; stroke-width: 1.5; }
+.i-fireplace { fill: #f8e2d6; stroke: #c9764a; }
+.i-dance { fill: #efe9f6; stroke: #9d8bbf; }
+.i-sound { fill: #e7eef5; stroke: #8aa4bf; }
+.i-waiters { fill: #eef3ea; stroke: #93a886; }
+.i-bath { fill: #eaf1f6; stroke: #87a5bd; }
+.i-ico { font: 20px sans-serif; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.i-lbl { font: 600 11px var(--sans); fill: #5a4f44; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.itm.selected .i-area, .itm.selected .i-box, .itm.selected .i-door, .itm.selected .i-window { stroke: var(--ink); stroke-width: 3; }
+.itm.selected .i-wall { stroke: var(--accent); stroke-width: 3; }
+.tbl .heart { font: 14px sans-serif; fill: #c0567a; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
+.tbl .tname.small { font-size: 11px; }
+.kinds { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin: 10px 0; }
+.kind { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 8px; border: 1px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; text-align: center; }
+.kind:hover { border-color: var(--accent); }
+.kind span { font-size: 1.6rem; line-height: 1.1; }
+.kind b { font-size: .9rem; }
+.kind small { font-size: .72rem; color: var(--muted); line-height: 1.25; }
+
+/* Controles deslizables con el color de la boda */
+input[type=range] { accent-color: var(--accent); padding: 0; border: 0; background: none; }

@@ -66,6 +66,14 @@
       $('.hero').classList.add('has-photo');
       $('#heroBg').style.backgroundImage = 'url("' + cfg.heroImage.replace(/"/g, '%22') + '")';
       // Punto de enfoque elegido en el panel (normalmente las caras) para que no se corten
+      // Transparencia (0–100): un velo del color de fondo sobre la foto. Difuminado (0–100): desenfoque.
+      const veil = Math.max(0, Math.min(100, parseInt(cfg.heroVeil, 10) || 0));
+      const blur = Math.max(0, Math.min(100, parseInt(cfg.heroBlur, 10) || 0));
+      $('#heroVeil').style.opacity = (veil / 100 * 0.92).toFixed(3);
+      $('#heroBg').style.filter = blur ? 'blur(' + (blur / 100 * 14).toFixed(1) + 'px)' : '';
+      $('#heroBg').classList.toggle('blurred', blur > 0);
+      // Con la foto muy transparente, las letras vuelven a ser oscuras para que se lean
+      $('.hero').classList.toggle('veiled', veil >= 55);
       const focus = /^\d{1,3}% \d{1,3}%$/.test(cfg.heroFocus || '') ? cfg.heroFocus : '50% 30%';
       const bgEl = $('#heroBg');
       bgEl.style.backgroundPosition = focus;

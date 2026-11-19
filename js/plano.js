@@ -32,6 +32,26 @@
 
   /* ====================== Modelo ====================== */
   const table = (id) => plan().tables.find((t) => t.id === id);
+  const items = () => (plan().items = Array.isArray(plan().items) ? plan().items : []);
+  const item = (id) => items().find((x) => x.id === id);
+  const obj = (id) => table(id) || item(id);     // mesa o elemento (para mover y girar)
+
+  // Elementos del salón: áreas, paredes, ventanas, entrada, baños, sonido, meseros, chimenea…
+  const ITEM_KINDS = {
+    area: { name: 'Área', icon: '⬚', w: 420, h: 280, desc: 'Delimita una zona (salón, terraza, jardín…)' },
+    wall: { name: 'Pared', icon: '▬', w: 300, h: 10, desc: 'Muro: ajusta el largo y gíralo' },
+    window: { name: 'Ventana', icon: '🪟', w: 160, h: 10, desc: 'Ventana en la pared' },
+    door: { name: 'Entrada', icon: '🚪', w: 90, h: 18, desc: 'Puerta de acceso de los invitados' },
+    bath: { name: 'Baños', icon: '🚻', w: 110, h: 80, desc: 'Puerta de los baños' },
+    sound: { name: 'Sonido / DJ', icon: '🔊', w: 120, h: 80, desc: 'Cabina de sonido o grupo' },
+    waiters: { name: 'Meseros', icon: '🍽️', w: 120, h: 70, desc: 'Por dónde sale el servicio' },
+    fireplace: { name: 'Chimenea', icon: '🔥', w: 120, h: 60, desc: 'Chimenea del lugar' },
+    dance: { name: 'Pista de baile', icon: '💃', w: 260, h: 200, desc: 'Zona de baile' },
+    bar: { name: 'Barra', icon: '🍸', w: 160, h: 60, desc: 'Barra de bebidas' },
+    cake: { name: 'Pastel', icon: '🎂', w: 80, h: 80, desc: 'Mesa del pastel' },
+    other: { name: 'Otro', icon: '📌', w: 100, h: 70, desc: 'Cualquier otra cosa' }
+  };
+  const itemExt = (it) => Math.hypot((it.w || 100) / 2, (it.h || 60) / 2);
   const guestById = (id) => guests().find((g) => g.id === id);
   const keyGuest = (k) => guestById(k.split('#')[0]);
   const keyIdx = (k) => parseInt(k.split('#')[1], 10) || 0;
@@ -118,8 +138,8 @@
   }
 
   /* ====================== Deshacer ====================== */
-  function snapshot() { return JSON.stringify({ tables: plan().tables, seats: plan().seats }); }
-  function restore(s) { const o = JSON.parse(s); plan().tables = o.tables; plan().seats = o.seats; }
+  function snapshot() { return JSON.stringify({ tables: plan().tables, seats: plan().seats, items: items() }); }
+  function restore(s) { const o = JSON.parse(s); plan().tables = o.tables; plan().seats = o.seats; plan().items = o.items || []; }
   function pushUndo(snap) { undoStack.push(snap || snapshot()); if (undoStack.length > 80) undoStack.shift(); redoStack.length = 0; }
   function undo() { if (!undoStack.length) return; redoStack.push(snapshot()); restore(undoStack.pop()); commit(false); B.toast('Deshecho ↶', 'info', 1400); }
   function redo() { if (!redoStack.length) return; undoStack.push(snapshot()); restore(redoStack.pop()); commit(false); B.toast('Rehecho ↷', 'info', 1400); }
@@ -141,6 +161,13 @@
       for (let j = bot - 1; j >= 0; j--) seats.push({ x: -(bot - 1) * sp / 2 + j * sp, y: h / 2 + 19, ox: 0, oy: 1 });
       return { kind: 'rect', w, h, seats, ext: Math.hypot(w / 2, h / 2 + 32) };
     }
+    if (t.shape === 'novios') {
+      const sp2 = 28;
+      const w = Math.max(n * sp2 + 12, 66), h = 36;
+      const seats = [];
+      for (let i = 0; i < n; i++) seats.push({ x: -(n - 1) * sp2 / 2 + i * sp2, y: -h / 2 - 17, ox: 0, oy: -1 });
+      return { kind: 'novios', w, h, seats, ext: Math.hypot(w / 2, h / 2 + 30) };
+    }
     if (t.shape === 'presidential') {
       const w = n * sp + 24, h = 48;
       const seats = [];
@@ -157,10 +184,12 @@
     return { kind: 'round', r, seats, ext: R + SEAT_R };
   }
 
-  function bbox(tables) {
-    if (!tables.length) return { x: -300, y: -200, w: 600, h: 400 };
+  function bbox(tables, withItems = true) {
+    const its = withItems ? items() : [];
+    if (!tables.length && !its.length) return { x: -300, y: -200, w: 600, h: 400 };
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     tables.forEach((t) => { const e = geom(t).ext + (showNames ? 30 : 6); x0 = Math.min(x0, t.x - e); y0 = Math.min(y0, t.y - e); x1 = Math.max(x1, t.x + e); y1 = Math.max(y1, t.y + e); });
+    its.forEach((it) => { const e = itemExt(it) + 20; x0 = Math.min(x0, it.x - e); y0 = Math.min(y0, it.y - e); x1 = Math.max(x1, it.x + e); y1 = Math.max(y1, it.y + e); });
     return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
   }
 
@@ -183,9 +212,9 @@
         if (selTable === t.id) cls += ' selected';
         if (need && mode === 'sentar') cls += free >= need ? ' fits' : ' nofit';
       }
-      html += '<g class="' + cls + '" data-table="' + t.id + '" transform="translate(' + t.x + ' ' + t.y + ') rotate(' + rot + ')">';
+      html += '<g class="' + cls + '" data-table="' + t.id + '" data-obj="' + t.id + '" transform="translate(' + t.x + ' ' + t.y + ') rotate(' + rot + ')">';
       if (g.kind === 'round') html += '<circle class="tshape" r="' + g.r + '"/>';
-      else html += '<rect class="tshape" x="' + (-g.w / 2) + '" y="' + (-g.h / 2) + '" width="' + g.w + '" height="' + g.h + '" rx="' + (g.kind === 'presidential' ? 4 : 8) + '"/>';
+      else html += '<rect class="tshape" x="' + (-g.w / 2) + '" y="' + (-g.h / 2) + '" width="' + g.w + '" height="' + g.h + '" rx="' + (g.kind === 'presidential' ? 4 : g.kind === 'novios' ? 10 : 8) + '"/>' + (g.kind === 'novios' ? '<text class="heart" y="2">♥</text>' : '');
       g.seats.forEach((p, i) => {
         const k = arr[i];
         const gu = k && keyGuest(k);
@@ -210,7 +239,8 @@
         countTxt = free >= need ? '✓ cabe · ' + free + ' libres' : '✗ faltan ' + (need - free);
         countCls = 'tcount' + (free >= need ? ' full' : ' over');
       }
-      html += '<g transform="rotate(' + (-rot) + ')"><text class="tname" y="-7">' + esc(t.name) + '</text><text class="' + countCls + '" y="9">' + countTxt + '</text></g>';
+      if (g.kind === 'novios') html += '<g transform="rotate(' + (-rot) + ')"><text class="tname small" y="' + (g.h / 2 + 14) + '">' + esc(t.name) + '</text></g>';
+      else html += '<g transform="rotate(' + (-rot) + ')"><text class="tname" y="-7">' + esc(t.name) + '</text><text class="' + countCls + '" y="9">' + countTxt + '</text></g>';
       if (!opts.export && mode === 'organizar' && selTable === t.id) {
         const hy = -(g.ext + 28);
         html += '<g class="handle" data-handle="' + t.id + '"><line x1="0" y1="' + (-g.ext + 6) + '" x2="0" y2="' + hy + '"/><circle cx="0" cy="' + hy + '" r="13"/><text x="0" y="' + hy + '" transform="rotate(' + (-rot) + ' 0 ' + hy + ')">↻</text></g>';
@@ -218,6 +248,42 @@
       html += '</g>';
     });
     return html;
+  }
+
+  function itemsMarkup(opts = {}) {
+    // Primero las áreas (al fondo), luego paredes/ventanas y al final lo demás
+    const order = { area: 0, dance: 1, wall: 2, window: 2 };
+    return items().slice().sort((a, b) => (order[a.kind] ?? 3) - (order[b.kind] ?? 3)).map((it) => {
+      const k = ITEM_KINDS[it.kind] || ITEM_KINDS.other;
+      const w = it.w || k.w, h = it.h || k.h, rot = it.rot || 0;
+      const label = it.label != null && it.label !== '' ? it.label : k.name;
+      const sel = !opts.export && selTable === it.id ? ' selected' : '';
+      let body = '';
+      if (it.kind === 'area') {
+        body = '<rect class="i-area" x="' + (-w / 2) + '" y="' + (-h / 2) + '" width="' + w + '" height="' + h + '" rx="6"/>' +
+          '<g transform="rotate(' + (-rot) + ')"><text class="i-area-lbl" y="' + (-h / 2 + 18) + '">' + esc(label) + '</text></g>';
+      } else if (it.kind === 'wall') {
+        body = '<rect class="i-wall" x="' + (-w / 2) + '" y="' + (-h / 2) + '" width="' + w + '" height="' + h + '"/>';
+      } else if (it.kind === 'window') {
+        body = '<rect class="i-window" x="' + (-w / 2) + '" y="' + (-h / 2) + '" width="' + w + '" height="' + h + '"/>' +
+          '<line class="i-window-line" x1="' + (-w / 2) + '" y1="0" x2="' + (w / 2) + '" y2="0"/>';
+      } else if (it.kind === 'door') {
+        // Hueco de la puerta con su abatimiento
+        body = '<rect class="i-door" x="' + (-w / 2) + '" y="' + (-h / 2) + '" width="' + w + '" height="' + h + '"/>' +
+          '<path class="i-door-arc" d="M' + (-w / 2) + ' ' + (h / 2) + ' A ' + w + ' ' + w + ' 0 0 0 ' + (w / 2) + ' ' + (h / 2 - w) + ' L ' + (-w / 2) + ' ' + (h / 2 - w) + '"/>' +
+          '<g transform="rotate(' + (-rot) + ')"><text class="i-lbl" y="' + (h / 2 + 16) + '">🚪 ' + esc(label) + '</text></g>';
+      } else {
+        body = '<rect class="i-box i-' + esc(it.kind) + '" x="' + (-w / 2) + '" y="' + (-h / 2) + '" width="' + w + '" height="' + h + '" rx="10"/>' +
+          '<g transform="rotate(' + (-rot) + ')"><text class="i-ico" y="' + (h > 50 ? -8 : 0) + '">' + k.icon + '</text>' +
+          (h > 50 ? '<text class="i-lbl" y="16">' + esc(label) + '</text>' : '') + '</g>';
+      }
+      let handle = '';
+      if (!opts.export && mode === 'organizar' && selTable === it.id) {
+        const hy = -(h / 2 + 30);
+        handle = '<g class="handle" data-handle="' + it.id + '"><line x1="0" y1="' + (-h / 2) + '" x2="0" y2="' + hy + '"/><circle cx="0" cy="' + hy + '" r="13"/><text x="0" y="' + hy + '" transform="rotate(' + (-rot) + ' 0 ' + hy + ')">↻</text></g>';
+      }
+      return '<g class="itm' + sel + '" data-item="' + it.id + '" data-obj="' + it.id + '" transform="translate(' + it.x + ' ' + it.y + ') rotate(' + rot + ')"><title>' + esc(label) + '</title>' + body + handle + '</g>';
+    }).join('');
   }
 
   function shortName(n) {
@@ -230,12 +296,9 @@
 
   function render() {
     if (!mounted) return;
-    world.innerHTML = tablesMarkup();
+    world.innerHTML = itemsMarkup() + tablesMarkup();
     applyView();
     stage.classList.toggle('organize', mode === 'organizar');
-    if (!plan().tables.length) {
-      world.innerHTML = '';
-    }
   }
 
   function fit() {
@@ -290,6 +353,8 @@
     if (s) return { kind: 'seat', tid: s.getAttribute('data-table'), seat: +s.getAttribute('data-seat') };
     const t = el.closest && el.closest('[data-table]');
     if (t) return { kind: 'table', tid: t.getAttribute('data-table') };
+    const it = el.closest && el.closest('[data-item]');
+    if (it) return { kind: 'item', tid: it.getAttribute('data-item') };
     return { kind: 'bg' };
   }
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -305,7 +370,7 @@
         const hit = hitTest(e.target);
         gest = { type: 'pan', start: { x: e.clientX, y: e.clientY }, moved: false, hit, tx: view.tx, ty: view.ty };
         if (mode === 'organizar' && hit.tid) {
-          const t = table(hit.tid);
+          const t = obj(hit.tid);
           if (hit.kind === 'handle') { gest.type = 'rotate'; gest.tid = t.id; gest.snap = snapshot(); }
           else { const w = toWorld(e.clientX, e.clientY); gest.type = 'drag'; gest.tid = t.id; gest.off = { x: w.x - t.x, y: w.y - t.y }; gest.snap = snapshot(); }
         }
@@ -313,7 +378,7 @@
       } else if (ptrs.size === 2) {
         const [a, b] = Array.from(ptrs.values());
         if (gest && mode === 'organizar' && gest.tid && (gest.type === 'drag' || gest.type === 'rotate')) {
-          const t = table(gest.tid);
+          const t = obj(gest.tid);
           gest = { type: 'rotate2', tid: t.id, a0: ang(a, b), r0: t.rot || 0, snap: gest.snap, moved: true };
         } else {
           const m = mid(a, b);
@@ -336,15 +401,15 @@
           applyView();
           break;
         case 'drag': {
-          const t = table(gest.tid); const w = toWorld(p.x, p.y);
+          const t = obj(gest.tid); const w = toWorld(p.x, p.y);
           t.x = Math.round((w.x - gest.off.x) / 10) * 10;
           t.y = Math.round((w.y - gest.off.y) / 10) * 10;
-          const el = world.querySelector('g.tbl[data-table="' + t.id + '"]');
+          const el = world.querySelector('[data-obj="' + t.id + '"]');
           if (el) el.setAttribute('transform', 'translate(' + t.x + ' ' + t.y + ') rotate(' + (t.rot || 0) + ')');
           break;
         }
         case 'rotate': {
-          const t = table(gest.tid); const w = toWorld(p.x, p.y);
+          const t = obj(gest.tid); const w = toWorld(p.x, p.y);
           t.rot = snapAngle(Math.atan2(w.y - t.y, w.x - t.x) * 180 / Math.PI + 90);
           render(); hint('Giro: ' + t.rot + '°' + (t.rot % 45 === 0 ? ' (encajada)' : ''));
           break;
@@ -352,7 +417,7 @@
         case 'rotate2': {
           if (ptrs.size < 2) break;
           const [a, b] = Array.from(ptrs.values());
-          const t = table(gest.tid);
+          const t = obj(gest.tid);
           t.rot = snapAngle(gest.r0 + (ang(a, b) - gest.a0));
           render(); hint('Giro: ' + t.rot + '°' + (t.rot % 45 === 0 ? ' (encajada)' : ''));
           break;
@@ -403,8 +468,10 @@
 
   /* ====================== Toques ====================== */
   function onTap(hit) {
+    if (hit.kind === 'item' && mode !== 'organizar') hit = { kind: 'bg' };
     if (mode === 'organizar') {
-      if (hit.tid) { selTable = hit.tid; openPanel({ type: 'table', id: hit.tid }); }
+      if (hit.tid && item(hit.tid)) { selTable = hit.tid; openPanel({ type: 'item', id: hit.tid }); }
+      else if (hit.tid) { selTable = hit.tid; openPanel({ type: 'table', id: hit.tid }); }
       else { selTable = null; openPanel({ type: 'home' }); }
       return;
     }
@@ -536,7 +603,7 @@
       const occ = occupancy();
       const freeOf = (t) => occ[t.id].filter((x) => !x).length;
       const sameFam = plan().tables.filter((t) => occ[t.id].some((k) => { const o = k && keyGuest(k); return o && (o.id === g.id || (g.group && o.group === g.group)); }));
-      const cands = (sameFam.filter((t) => freeOf(t) >= keys.length).length ? sameFam : plan().tables).filter((t) => freeOf(t) >= keys.length && t.shape !== 'presidential');
+      const cands = (sameFam.filter((t) => freeOf(t) >= keys.length).length ? sameFam : plan().tables).filter((t) => freeOf(t) >= keys.length && t.shape !== 'presidential' && t.shape !== 'novios');
       cands.sort((a, b) => freeOf(a) - freeOf(b));
       const t = cands[0];
       if (t && seatKeys(keys, t.id, null, { silent: true, noUndo: true, keepPanel: true })) ok++;
@@ -550,9 +617,10 @@
   const SHAPES = [
     ['round', 'Redonda', '<svg width="34" height="34" viewBox="-17 -17 34 34"><circle r="9" fill="none" stroke="currentColor" stroke-width="2"/>' + [0, 1, 2, 3, 4, 5].map((i) => '<circle r="2.6" cx="' + (14 * Math.cos(i * Math.PI / 3)).toFixed(1) + '" cy="' + (14 * Math.sin(i * Math.PI / 3)).toFixed(1) + '" fill="currentColor"/>').join('') + '</svg>'],
     ['rect', 'Rectangular', '<svg width="40" height="34" viewBox="-20 -17 40 34"><rect x="-15" y="-7" width="30" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>' + [-10, 0, 10].map((x) => '<circle r="2.6" cx="' + x + '" cy="-12" fill="currentColor"/><circle r="2.6" cx="' + x + '" cy="12" fill="currentColor"/>').join('') + '</svg>'],
-    ['presidential', 'Presidencial', '<svg width="44" height="34" viewBox="-22 -17 44 34"><rect x="-20" y="-3" width="40" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>' + [-15, -5, 5, 15].map((x) => '<circle r="2.6" cx="' + x + '" cy="-8" fill="currentColor"/>').join('') + '</svg>']
+    ['presidential', 'Presidencial', '<svg width="44" height="34" viewBox="-22 -17 44 34"><rect x="-20" y="-3" width="40" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>' + [-15, -5, 5, 15].map((x) => '<circle r="2.6" cx="' + x + '" cy="-8" fill="currentColor"/>').join('') + '</svg>'],
+    ['novios', 'De novios', '<svg width="34" height="34" viewBox="-17 -17 34 34"><rect x="-9" y="-2" width="18" height="10" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><circle r="2.6" cx="-4" cy="-7" fill="currentColor"/><circle r="2.6" cx="4" cy="-7" fill="currentColor"/><text x="0" y="6" font-size="7" text-anchor="middle" fill="currentColor">♥</text></svg>']
   ];
-  const DEFAULT_SEATS = { round: 10, rect: 12, presidential: 8 };
+  const DEFAULT_SEATS = { round: 10, rect: 12, presidential: 8, novios: 2 };
 
   function shapePicker(cur) {
     return '<div class="seg">' + SHAPES.map(([v, l, ic]) => '<label><input type="radio" name="tShape" value="' + v + '"' + (v === cur ? ' checked' : '') + '><span>' + ic + l + '</span></label>').join('') + '</div>';
@@ -594,15 +662,17 @@
           const q = +$('#tQty', m).value || 1, s = +$('#tSeats', m).value || 1;
           const base = $('#tName', m).value.trim() || 'Mesa';
           const n0 = nextNumber(base);
-          const names = q === 1 && (shape === 'presidential' || !/^mesa$/i.test(base)) && !plan().tables.some((t) => t.name === base) ? [base] : Array.from({ length: q }, (_, i) => base + ' ' + (n0 + i));
+          const names = q === 1 && (shape === 'presidential' || shape === 'novios' || !/^mesa$/i.test(base)) && !plan().tables.some((t) => t.name === base) ? [base] : Array.from({ length: q }, (_, i) => base + ' ' + (n0 + i));
           $('#tPrev', m).textContent = 'Se crearán: ' + names.slice(0, 8).join(', ') + (names.length > 8 ? '…' : '') + ' · ' + q * s + ' plazas en total.';
           $('#tOk', m).textContent = 'Añadir ' + q + (q > 1 ? ' mesas' : ' mesa');
           return { shape, q, s, names };
         };
         $$('input[name=tShape]', m).forEach((r) => r.onchange = () => {
           if (!seatsTouched) $('#tSeats', m).value = DEFAULT_SEATS[r.value];
-          if (r.value === 'presidential' && /^mesa$/i.test($('#tName', m).value.trim())) $('#tName', m).value = 'Presidencial';
-          else if (r.value !== 'presidential' && /^presidencial$/i.test($('#tName', m).value.trim())) $('#tName', m).value = 'Mesa';
+          const nm = $('#tName', m).value.trim();
+          const generic = /^(mesa|presidencial|mesa de novios)$/i.test(nm);
+          if (generic) $('#tName', m).value = r.value === 'presidential' ? 'Presidencial' : r.value === 'novios' ? 'Mesa de novios' : 'Mesa';
+          if (r.value === 'novios') $('#tQty', m).value = 1;
           prev();
         });
         $('#tSeats', m).addEventListener('input', () => { seatsTouched = true; prev(); });
@@ -617,6 +687,29 @@
           addTables(names, shape, s);
         };
       });
+  }
+
+  function openAddItem() {
+    A().openModal('<h3>Agregar al plano</h3><p class="muted small">Elige qué quieres poner. Aparece en el centro de la pantalla; después lo mueves, lo giras y le cambias el tamaño en <b>Organizar</b>.</p>' +
+      '<div class="kinds">' + Object.entries(ITEM_KINDS).map(([key, k]) => '<button type="button" class="kind" data-kind="' + key + '"><span>' + k.icon + '</span><b>' + esc(k.name) + '</b><small>' + esc(k.desc) + '</small></button>').join('') + '</div>' +
+      '<p class="muted small">¿La <b>mesa de novios</b>? Está en <b>＋ Mesa → De novios</b> (tiene sillas para sentarlos).</p>', (m) => {
+      $$('[data-kind]', m).forEach((b) => {
+        b.onclick = () => {
+          A().closeModal();
+          const kind = b.dataset.kind, k = ITEM_KINDS[kind];
+          const r = stage.getBoundingClientRect();
+          const c = toWorld(r.left + r.width / 2, r.top + r.height / 2);
+          pushUndo();
+          const it = { id: 'e' + B.newId(), kind, x: Math.round(c.x / 10) * 10, y: Math.round(c.y / 10) * 10, rot: 0, w: k.w, h: k.h, label: '' };
+          items().push(it);
+          mode = 'organizar';
+          selTable = it.id;
+          openPanel({ type: 'item', id: it.id }, true);
+          commit();
+          B.toast(k.icon + ' ' + esc(k.name) + ' agregado. Arrástralo a su lugar.', 'ok', 2500);
+        };
+      });
+    });
   }
 
   function addTables(names, shape, seats) {
@@ -786,6 +879,7 @@
     const back = '<button class="back" data-act="home" title="Volver">←</button>';
 
     if (panel.type === 'table' && !table(panel.id)) panel = { type: 'home' };
+    if (panel.type === 'item' && !item(panel.id)) panel = { type: 'home' };
     if (panel.type === 'member' && !plan().seats[panel.key]) panel = { type: 'home' };
     if (panel.type === 'pick' && !table(panel.tid)) panel = { type: 'home' };
 
@@ -810,10 +904,23 @@
       } else {
         html += plan().tables.length ? plan().tables.map((t) => {
           const used = occ[t.id].filter(Boolean).length;
-          return '<div class="grp" data-open="' + t.id + '"><span class="dot" style="background:var(--accent)">' + (t.shape === 'round' ? '●' : t.shape === 'rect' ? '▬' : '★') + '</span><span class="t"><b>' + esc(t.name) + '</b><small>' + (t.seats - used) + ' libres de ' + t.seats + '</small></span><span class="n">' + used + '/' + t.seats + '</span></div>';
+          return '<div class="grp" data-open="' + t.id + '"><span class="dot" style="background:var(--accent)">' + (t.shape === 'round' ? '●' : t.shape === 'rect' ? '▬' : t.shape === 'novios' ? '♥' : '★') + '</span><span class="t"><b>' + esc(t.name) + '</b><small>' + (t.seats - used) + ' libres de ' + t.seats + '</small></span><span class="n">' + used + '/' + t.seats + '</span></div>';
         }).join('') : '<div class="empty-note">Aún no hay mesas.<br><button class="btn btn-primary" data-act="add" style="margin-top:8px">＋ Añadir mesas</button></div>';
       }
       body.innerHTML = html;
+    }
+
+    if (panel.type === 'item') {
+      const it = item(panel.id);
+      const k = ITEM_KINDS[it.kind] || ITEM_KINDS.other;
+      const thin = it.kind === 'wall' || it.kind === 'window';
+      head.innerHTML = back + '<h4>' + k.icon + ' ' + esc(it.label || k.name) + '</h4>';
+      body.innerHTML = '<p class="small muted">' + esc(k.desc) + '. Arrástralo para moverlo y gíralo con el tirador ↻ (encaja cada 45°).</p>' +
+        '<label class="frow"><span>Nombre</span><input id="iLabel" value="' + esc(it.label || '') + '" placeholder="' + esc(k.name) + '"></label>' +
+        '<div class="form-grid"><label><span>' + (thin ? 'Largo' : 'Ancho') + '</span><input id="iW" type="number" min="10" max="3000" step="10" value="' + (it.w || k.w) + '"></label>' +
+        '<label><span>' + (thin ? 'Grosor' : 'Alto') + '</span><input id="iH" type="number" min="4" max="3000" step="' + (thin ? 2 : 10) + '" value="' + (it.h || k.h) + '"></label></div>' +
+        '<div class="actions-col" style="grid-template-columns:repeat(3,1fr)"><button class="btn btn-sm" data-act="irotl">⟲ 45°</button><button class="btn btn-sm" data-act="irot0">Enderezar</button><button class="btn btn-sm" data-act="irotr">⟳ 45°</button></div>' +
+        '<div class="actions-col"><button class="btn btn-sm" data-act="idup">Duplicar</button><button class="btn btn-sm btn-danger" data-act="idel">Eliminar</button></div>';
     }
 
     if (panel.type === 'table') {
@@ -821,7 +928,7 @@
       const arr = occ[t.id];
       const used = arr.filter(Boolean).length;
       head.innerHTML = back + '<h4>' + esc(t.name) + '</h4><button class="btn btn-sm" data-act="edit">Editar</button>';
-      let html = '<div class="tstat"><div><b>' + (t.seats - used) + '</b><span>libres</span></div><div><b>' + used + '</b><span>ocupadas</span></div><div><b>' + t.seats + '</b><span>plazas · ' + ({ round: 'redonda', rect: 'rectangular', presidential: 'presidencial' })[t.shape] + '</span></div></div>';
+      let html = '<div class="tstat"><div><b>' + (t.seats - used) + '</b><span>libres</span></div><div><b>' + used + '</b><span>ocupadas</span></div><div><b>' + t.seats + '</b><span>plazas · ' + ({ round: 'redonda', rect: 'rectangular', presidential: 'presidencial', novios: 'de novios' })[t.shape] + '</span></div></div>';
       if (selection.size) {
         const free = t.seats - used + arr.filter((k) => k && selection.has(k)).length;
         html += '<button class="btn btn-block ' + (free >= selection.size ? 'btn-ok' : 'btn-danger') + '" data-act="seatsel">' + (free >= selection.size ? 'Sentar aquí a ' + selection.size + (selection.size > 1 ? ' personas' : ' persona') : '✗ No caben: faltan ' + (selection.size - free)) + '</button>';
@@ -924,6 +1031,26 @@
       const keys = filteredUnseated(sinSearch, sinFilter).filter((x) => (x.g.group || 'Sin grupo') === el.dataset.fam).flatMap((x) => x.keys);
       toggleKeys(keys);
     });
+
+    // Elemento del salón
+    if (panel.type === 'item') {
+      const id = panel.id, it = item(id);
+      let snap = null;
+      const edit = (fn) => { if (!snap) snap = snapshot(); fn(); render(); };
+      const done = () => { if (snap && snap !== snapshot()) { pushUndo(snap); A().savePlan(); } snap = null; renderToolbar(); };
+      const lab = $('#iLabel', body), iw = $('#iW', body), ih = $('#iH', body);
+      lab.oninput = () => edit(() => { it.label = lab.value.trim(); });
+      lab.onchange = done;
+      iw.oninput = () => edit(() => { it.w = Math.max(10, Math.min(3000, +iw.value || 10)); });
+      ih.oninput = () => edit(() => { it.h = Math.max(4, Math.min(3000, +ih.value || 4)); });
+      iw.onchange = done; ih.onchange = done;
+      const rot = (d) => { pushUndo(); it.rot = d === 0 ? 0 : (((Math.round(((it.rot || 0) + d) / 45) * 45) % 360) + 360) % 360; commit(); };
+      on('[data-act=irotl]', () => rot(-45));
+      on('[data-act=irotr]', () => rot(45));
+      on('[data-act=irot0]', () => rot(0));
+      on('[data-act=idup]', () => { pushUndo(); const c = Object.assign({}, it, { id: 'e' + B.newId(), x: it.x + 30, y: it.y + 30 }); items().push(c); selTable = c.id; openPanel({ type: 'item', id: c.id }, true); commit(); });
+      on('[data-act=idel]', () => { pushUndo(); plan().items = items().filter((x) => x.id !== id); selTable = null; openPanel({ type: 'home' }, true); B.toast('Elemento eliminado (puedes deshacer ↶)', 'ok', 2000); commit(); });
+    }
 
     // Mesa
     if (panel.type === 'table') {
@@ -1053,7 +1180,7 @@
   }
 
   /* ====================== Descargar ====================== */
-  const EXPORT_STYLE = '.tshape{fill:#fff;stroke:#b9a27a;stroke-width:2}.tname{font:600 13px Helvetica,Arial,sans-serif;fill:#2f2a24;text-anchor:middle;dominant-baseline:middle}.tcount{font:500 11px Helvetica,Arial,sans-serif;fill:#7a6f63;text-anchor:middle;dominant-baseline:middle}.tcount.full{fill:#4f8a56}.seat circle{fill:#fff;stroke:#cbb894;stroke-width:1.6}.seat.free circle{stroke-dasharray:3 2.5}.ini{font:600 9.5px Helvetica,Arial,sans-serif;text-anchor:middle;dominant-baseline:central;fill:#fff}.nm{font:500 8.5px Helvetica,Arial,sans-serif;fill:#2f2a24;text-anchor:middle;dominant-baseline:central;paint-order:stroke;stroke:#fff;stroke-width:3px}.flagdot{fill:#b5544b}.seat.flag circle{stroke:#b5544b!important;stroke-width:3!important}.ttl{font:600 22px Georgia,serif;fill:#2f2a24}.sub{font:400 11px Helvetica,Arial,sans-serif;fill:#7a6f63}';
+  const EXPORT_STYLE = '.tshape{fill:#fff;stroke:#b9a27a;stroke-width:2}.tname{font:600 13px Helvetica,Arial,sans-serif;fill:#2f2a24;text-anchor:middle;dominant-baseline:middle}.tcount{font:500 11px Helvetica,Arial,sans-serif;fill:#7a6f63;text-anchor:middle;dominant-baseline:middle}.tcount.full{fill:#4f8a56}.seat circle{fill:#fff;stroke:#cbb894;stroke-width:1.6}.seat.free circle{stroke-dasharray:3 2.5}.ini{font:600 9.5px Helvetica,Arial,sans-serif;text-anchor:middle;dominant-baseline:central;fill:#fff}.nm{font:500 8.5px Helvetica,Arial,sans-serif;fill:#2f2a24;text-anchor:middle;dominant-baseline:central;paint-order:stroke;stroke:#fff;stroke-width:3px}.flagdot{fill:#b5544b}.seat.flag circle{stroke:#b5544b!important;stroke-width:3!important}.ttl{font:600 22px Georgia,serif;fill:#2f2a24}.i-area{fill:rgba(154,123,79,.06);stroke:#b9a27a;stroke-width:2;stroke-dasharray:10 6}.i-area-lbl{font:600 13px Helvetica,Arial,sans-serif;fill:#9a7b4f;text-anchor:middle}.i-wall{fill:#5b4a3a}.i-window{fill:#d6ebf7;stroke:#6aa0c8;stroke-width:2}.i-window-line{stroke:#6aa0c8;stroke-width:1.5}.i-door{fill:#fff;stroke:#8a6b4a;stroke-width:2}.i-door-arc{fill:none;stroke:#8a6b4a;stroke-width:1.5;stroke-dasharray:4 3}.i-box{fill:#f4efe6;stroke:#cbb894;stroke-width:1.5}.i-fireplace{fill:#f8e2d6;stroke:#c9764a}.i-dance{fill:#efe9f6;stroke:#9d8bbf}.i-ico{font:20px sans-serif;text-anchor:middle;dominant-baseline:central}.i-lbl{font:600 11px Helvetica,Arial,sans-serif;fill:#5a4f44;text-anchor:middle;dominant-baseline:central}.heart{font:14px sans-serif;fill:#c0567a;text-anchor:middle;dominant-baseline:middle}.tname.small{font-size:11px}.sub{font:400 11px Helvetica,Arial,sans-serif;fill:#7a6f63}';
 
   function exportSvg() {
     const b = bbox(plan().tables);
@@ -1064,7 +1191,7 @@
       '<rect width="100%" height="100%" fill="#fffdf9"/>' +
       '<text class="ttl" x="' + pad + '" y="34">Plano de mesas · ' + esc(cfg.name1 + ' & ' + cfg.name2) + '</text>' +
       '<text class="sub" x="' + pad + '" y="50">' + esc(B.formatLongDate(cfg) + ' · ' + cfg.venueName + ' · ' + new Date().toLocaleDateString('es-MX')) + '</text>' +
-      '<g transform="translate(' + (pad - b.x) + ' ' + (pad + top - b.y) + ')">' + tablesMarkup({ export: true, names: true }) + '</g></svg>';
+      '<g transform="translate(' + (pad - b.x) + ' ' + (pad + top - b.y) + ')">' + itemsMarkup({ export: true }) + tablesMarkup({ export: true, names: true }) + '</g></svg>';
     return { svgStr, w, h };
   }
 
@@ -1153,6 +1280,7 @@
       '<div class="mode-switch"><button data-mode="sentar" class="on" title="Sentar invitados">🪑 Sentar</button><button data-mode="organizar" title="Mover y girar mesas">✥ Organizar</button></div>' +
       '<span class="sep"></span>' +
       '<button class="tbtn" id="plAdd" title="Añadir mesas">＋ Mesa</button>' +
+      '<button class="tbtn" id="plAddItem" title="Áreas, paredes, ventanas, entrada, baños, sonido, meseros, chimenea…">＋ Elemento</button>' +
       '<button class="tbtn" id="plUndo" title="Deshacer (Ctrl+Z)">↶</button>' +
       '<button class="tbtn" id="plRedo" title="Rehacer (Ctrl+Y)">↷</button>' +
       '<span class="sep"></span>' +
@@ -1179,6 +1307,7 @@
 
     $$('.mode-switch button', root).forEach((b) => { b.onclick = () => setMode(b.dataset.mode); });
     $('#plAdd').onclick = openAddTables;
+    $('#plAddItem').onclick = openAddItem;
     $('#plUndo').onclick = undo;
     $('#plRedo').onclick = redo;
     $('#plZin').onclick = () => { const r = svg.getBoundingClientRect(); zoomAt(r.left + r.width / 2, r.top + r.height / 2, 1.25); };

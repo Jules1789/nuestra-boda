@@ -380,3 +380,15 @@ body.locked { overflow: hidden; }
 .for-text { margin: 0; font: italic 400 clamp(1.05rem, 3vw, 1.3rem)/1.4 var(--serif); color: var(--muted); }
 .hero.has-photo .for-label, .hero.has-photo .for-text { color: rgba(255, 255, 255, .9); }
 .hero.has-photo .for-name { text-shadow: 0 2px 18px rgba(0, 0, 0, .35); }
+
+/* Transparencia y difuminado de la foto de portada */
+.hero-veil { position: absolute; inset: 0; z-index: -2; background: var(--bg); opacity: 0; pointer-events: none; display: none; }
+.hero.has-photo .hero-veil { display: block; }
+.hero-bg.blurred { inset: -30px; }
+.hero.has-photo.veiled { color: var(--ink); }
+.hero.has-photo.veiled .hero-shade { background: none; }
+.hero.has-photo.veiled .eyebrow, .hero.has-photo.veiled .hero-place, .hero.has-photo.veiled .for-label, .hero.has-photo.veiled .for-text { color: var(--muted); }
+.hero.has-photo.veiled .names, .hero.has-photo.veiled .hero-date, .hero.has-photo.veiled .for-name { text-shadow: none; }
+.hero.has-photo.veiled .names .amp { color: var(--accent); }
+.hero.has-photo.veiled .btn-ghost { color: var(--accent); border-color: var(--accent); }
+.hero.has-photo.veiled .countdown div { background: color-mix(in srgb, var(--card) 60%, transparent); border-color: var(--line); }

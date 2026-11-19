@@ -50,7 +50,7 @@
 
   function normalizePlan(p) {
     p = p && typeof p === 'object' ? p : {};
-    return { tables: Array.isArray(p.tables) ? p.tables : [], seats: p.seats && typeof p.seats === 'object' ? p.seats : {}, updated: p.updated || '' };
+    return { tables: Array.isArray(p.tables) ? p.tables : [], seats: p.seats && typeof p.seats === 'object' ? p.seats : {}, items: Array.isArray(p.items) ? p.items : [], updated: p.updated || '' };
   }
 
   /* --------------- Tiempo real: sondeo + avisos --------------- */
@@ -724,6 +724,13 @@
           '<button type="button" class="pal" data-pal="' + i + '" title="' + esc(pl.name) + '">' +
           '<i style="background:' + pl.colorBg + '"></i><i style="background:' + pl.theme + '"></i><i style="background:' + pl.colorNature + '"></i><i style="background:' + pl.colorText + '"></i>' +
           '<small>' + esc(pl.name) + '</small></button>').join('') + '</div>' + (help ? '<small>' + esc(help) + '</small>' : '') + '</div>';
+        return;
+      }
+      if (type === 'range') {
+        const n = Math.max(0, Math.min(100, parseInt(v, 10) || 0));
+        s.html += '<label class="frow"><span>' + esc(label) + ': <b data-rangeval="' + key + '">' + n + '</b></span>' +
+          '<input type="range" min="0" max="100" step="1" name="' + key + '" value="' + n + '" oninput="this.form.querySelector(\'[data-rangeval=' + key + ']\').textContent=this.value">' +
+          (help ? '<small>' + esc(help) + '</small>' : '') + '</label>';
         return;
       }
       if (type === 'list') {
