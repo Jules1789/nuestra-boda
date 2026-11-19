@@ -55,7 +55,9 @@
     setText('#heroDate', longDate);
     setText('#heroPlace', cfg.ceremonyAddress || cfg.address || cfg.venueName);
     setText('#footDate', longDate);
-    setText('#hashtag', cfg.hashtag);
+    // Hashtags del pie de página: uno o varios (separados por espacio, coma o renglón)
+    const tags = String(cfg.hashtag || '').split(/[\s,;]+/).map((t) => t.replace(/^#+/, '').trim()).filter(Boolean);
+    $('#hashtag').innerHTML = tags.map((t) => '<span>#' + esc(t) + '</span>').join('');
     if (cfg.contactPhone) {
       const wa = B.waPhone(cfg.contactPhone, cfg.countryCode);
       $('#contact').innerHTML = '¿Dudas? <a href="https://wa.me/' + wa + '?text=' + encodeURIComponent('¡Hola ' + cfg.name1 + '! Tengo una duda sobre la boda: ') + '" target="_blank" rel="noopener">Escríbele a ' + esc(cfg.name1) + ' por WhatsApp</a>';
@@ -88,7 +90,6 @@
     setText('#message', cfg.message);
     setText('#dWhen', longDate);
 
-    setText('#dTime', places.map((p) => p.title + ': ' + p.time).join(' · '));
     $('#placeCards').innerHTML = places.map((p) => '<article class="card"><div class="ico">' + p.icon + '</div><h3>' + esc(p.title) + '</h3>' +
       (p.time ? '<p class="time">' + esc(p.time) + '</p>' : '') + '<p>' + esc(p.name || '') + '</p><p class="muted">' + esc(p.address || '') + '</p>' +
       '<a class="btn btn-ghost btn-sm" target="_blank" rel="noopener" href="' + esc(B.mapsLink(p)) + '">📍 Cómo llegar</a></article>').join('');
@@ -148,8 +149,8 @@
 
     // Sin fecha todavía: se ocultan la cuenta regresiva, el calendario y "Cuándo"
     const hasDate = !!B.eventDates(cfg).start;
-    showIf('#countdown', hasDate); showIf('#calendario', hasDate); showIf('#cardWhen', hasDate);
-    showIf('.hero-cta a[href="#calendario"]', hasDate);
+    showIf('#countdown', hasDate); showIf('#cardWhen', hasDate);
+    showIf('.hero-cta a[href="#cardWhen"]', hasDate);
     // Sin lugares todavía: se oculta "Cómo llegar"
     showIf('#ubicacion', places.length);
 

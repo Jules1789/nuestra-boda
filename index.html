@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/site.css?v=14">
+  <link rel="stylesheet" href="css/site.css?v=15">
 </head>
 <body>
   <div id="loading" class="loading"><div class="rings"></div></div>
@@ -71,7 +71,7 @@
       <p class="cd-msg" id="cdMsg" hidden></p>
       <div class="hero-cta">
         <a href="#confirmar" class="btn btn-primary">Confirmar asistencia</a>
-        <a href="#calendario" class="btn btn-ghost">Guardar la fecha</a>
+        <a href="#cardWhen" class="btn btn-ghost">Guardar la fecha</a>
       </div>
     </div>
     <a class="scroll-hint" href="#bienvenida" aria-label="Bajar">⌄</a>
@@ -113,7 +113,13 @@
           <div class="ico">📅</div>
           <h3>Cuándo</h3>
           <p id="dWhen"></p>
-          <p class="muted" id="dTime"></p>
+          <p class="muted cal-hint">Guarda la fecha en tu calendario:</p>
+          <div class="cal-mini" id="calButtons">
+            <a class="btn btn-cal" id="calGoogle" target="_blank" rel="noopener"><span>G</span>Google Calendar</a>
+            <a class="btn btn-cal" id="calApple" download="boda.ics"><span>A</span>Apple Calendar</a>
+            <a class="btn btn-cal" id="calOutlook" target="_blank" rel="noopener"><span>O</span>Outlook</a>
+            <a class="btn btn-cal" id="calOffice" target="_blank" rel="noopener"><span>365</span>Office 365</a>
+          </div>
         </article>
         <div id="placeCards" class="place-cards"></div>
       </div>
@@ -144,17 +150,6 @@
           <p id="dGifts" class="pre"></p>
           <a class="gift-link" id="giftLink" target="_blank" rel="noopener" hidden></a>
         </article>
-      </div>
-    </section>
-
-    <section class="section" id="calendario" data-mark="Guardar la fecha" data-icon="🗓️">
-      <h2>Guarda la fecha</h2>
-      <p class="sub">Añádela a tu calendario con un toque. Incluye hora, lugar y el enlace a esta página.</p>
-      <div class="cal-buttons">
-        <a class="btn btn-cal" id="calGoogle" target="_blank" rel="noopener"><span>G</span>Google Calendar</a>
-        <a class="btn btn-cal" id="calApple" download="boda.ics"><span>A</span>Apple Calendar</a>
-        <a class="btn btn-cal" id="calOutlook" target="_blank" rel="noopener"><span>O</span>Outlook</a>
-        <a class="btn btn-cal" id="calOffice" target="_blank" rel="noopener"><span>365</span>Office 365</a>
       </div>
     </section>
 
@@ -287,7 +282,7 @@
     </div>
     <p class="names-sm" id="footNames"></p>
     <p id="footDate"></p>
-    <p class="hashtag" id="hashtag"></p>
+    <p class="hashtags" id="hashtag"></p>
     <p class="contact" id="contact"></p>
   </footer>
 
@@ -300,8 +295,8 @@
     <button class="lb-nav next" id="lbNext" aria-label="Siguiente">›</button>
   </div>
 
-  <script src="js/config.js?v=14"></script>
-  <script src="js/common.js?v=14"></script>
-  <script src="js/site.js?v=14"></script>
+  <script src="js/config.js?v=15"></script>
+  <script src="js/common.js?v=15"></script>
+  <script src="js/site.js?v=15"></script>
 </body>
 </html>

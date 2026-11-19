@@ -64,7 +64,7 @@
     ['Pareja', 'message', 'Mensaje de bienvenida', 'textarea'],
     ['Pareja', 'heroImage', 'Foto de portada', 'image', 'Se muestra de fondo al principio, con las montañas animadas encima. Vacío = fondo claro con montañas.'],
     ['Pareja', 'heroFocus', '', 'hidden'],
-    ['Pareja', 'hashtag', 'Hashtag', 'text'],
+    ['Pareja', 'hashtag', 'Hashtags (al final de la página)', 'textarea', 'Uno o varios, separados por espacio o en renglones. Ej. #BodaJulioYYamile #JulioYYamile2027. Si no llevan #, se lo ponemos.'],
     ['Pareja', 'welcomeMessage', 'Mensaje al abrir la invitación', 'textarea', 'Aparece justo después de que el invitado escribe su celular, con su nombre o el de su familia arriba.'],
     ['Pareja', 'declineMessage', 'Mensaje para quienes no podrán asistir', 'textarea', 'Lo ven justo después de responder “No podremos asistir”.'],
     ['Pareja', 'declineDeadline', 'Fecha límite para cambiar su respuesta (opcional)', 'date', 'Al elegirla se escribe sola en el mensaje de arriba; luego puedes editar el texto como quieras. Bórrala para quitarla del mensaje.'],
