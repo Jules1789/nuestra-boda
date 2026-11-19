@@ -320,3 +320,10 @@ body.locked { overflow: hidden; }
 .wlabel { font-weight: 500; margin: 0 0 8px; }
 .wform .chips { margin-bottom: 8px; }
 .wdone-title { font: 500 1.6rem var(--serif); margin: 4px 0 6px; color: var(--accent); }
+
+/* Mesa de regalos */
+.gift-photo { display: block; margin: 6px auto 12px; border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); max-width: 320px; }
+.gift-photo img { display: block; width: 100%; aspect-ratio: 4/3; object-fit: cover; transition: transform .4s ease; }
+.gift-photo:hover img { transform: scale(1.04); }
+.gift-link { display: inline-block; margin-top: 10px; padding: .6em 1.2em; border-radius: 999px; background: var(--accent); color: #fff; text-decoration: none; font-weight: 500; }
+.gift-link:hover { filter: brightness(1.06); }

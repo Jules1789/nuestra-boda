@@ -25,6 +25,9 @@
     lodging: '',
     instructions: '',
     gifts: '',
+    giftsStore: '',
+    giftsUrl: '',
+    giftsImage: '',
     playlistUrl: '',
     videoUrl: '',
     heroImage: '',
@@ -88,7 +91,10 @@
     ['Detalles', 'dressCode', 'Código de vestimenta', 'textarea'],
     ['Detalles', 'lodging', 'Alojamiento', 'textarea'],
     ['Detalles', 'instructions', 'Indicaciones para el día', 'textarea'],
-    ['Detalles', 'gifts', 'Mesa de regalos', 'textarea'],
+    ['Mesa de regalos', 'giftsImage', 'Foto de la mesa de regalos', 'image', 'Al tocar la foto, tus invitados van directo a la mesa de regalos.'],
+    ['Mesa de regalos', 'giftsStore', 'Tienda', 'text', 'Ej. Liverpool. También es un enlace directo a la mesa de regalos.'],
+    ['Mesa de regalos', 'giftsUrl', 'Enlace de la mesa de regalos', 'url', 'Pega aquí el enlace de tu mesa (no se muestra como texto en la página).'],
+    ['Mesa de regalos', 'gifts', 'Mensaje (opcional)', 'textarea', 'Ej. Tu presencia es nuestro mejor regalo; si deseas hacernos un obsequio…'],
     ['Detalles', 'contactPhone', 'Teléfono de contacto (WhatsApp)', 'tel'],
     ['Música y video', 'playlistUrl', 'Playlist de YouTube Music', 'url', 'Abre tu playlist en YouTube Music → Compartir → Copiar enlace, y pégalo aquí. Se integra sola.'],
     ['Música y video', 'preweddingVideos', 'Videos preboda (YouTube, uno por renglón)', 'textarea', 'Sube tus videos a YouTube como “No listado” y pega aquí los enlaces, uno por renglón.'],
@@ -348,10 +354,27 @@
   }
 
   function waPhone(phone, cc) {
+    // La lada debe ser solo el código de país (México = 52). Si trae un número pegado, se lo quitamos.
+    cc = String(cc || '').replace(/\D/g, '');
+    if (cc.length > 3) cc = cc.length > 10 ? cc.slice(0, cc.length - 10) : '52';
     let d = String(phone || '').replace(/\D/g, '');
     if (!d) return '';
     if (d.length === 10 && cc) d = cc + d;
     return d;
+  }
+
+  // Mesa de regalos: enlace, tienda y mensaje (acepta también el formato viejo: el enlace pegado en el mensaje)
+  const STORES = [[/liverpool/i, 'Liverpool'], [/palaciodehierro|palacio/i, 'El Palacio de Hierro'], [/amazon/i, 'Amazon'], [/sears/i, 'Sears'], [/suburbia/i, 'Suburbia'], [/costco/i, 'Costco'], [/walmart/i, 'Walmart']];
+  function giftsInfo(cfg) {
+    const urlRx = /https?:\/\/\S+/i;
+    let url = String(cfg.giftsUrl || '').trim();
+    let text = String(cfg.gifts || '');
+    const m = text.match(urlRx);
+    if (!url && m) url = m[0];
+    text = text.replace(/https?:\/\/\S+/gi, '').trim();
+    let store = String(cfg.giftsStore || '').trim();
+    if (!store && url) { const f = STORES.find(([rx]) => rx.test(url)); store = f ? f[1] : 'nuestra mesa de regalos'; }
+    return { url, text, store, image: String(cfg.giftsImage || '').trim() };
   }
 
   function siteBaseUrl(cfg) {
@@ -567,7 +590,7 @@
     googleCalUrl, outlookUrl, icsText, icsDataUrl,
     mapsLink, wazeLink, appleMapsLink, mapEmbed, mapQuery, places, fmtHour,
     ytEmbed, ytMusicLink, ytPlaylistId, ytVideoId,
-    focusPosition, shareLinks, waPhone, siteBaseUrl, guestLink, fillTemplate, copyText, applyTheme, toast,
+    focusPosition, giftsInfo, shareLinks, waPhone, siteBaseUrl, guestLink, fillTemplate, copyText, applyTheme, toast,
     api, isDemo, demoReset, DEMO_KEY,
     withDefaults: (cfg) => Object.assign({}, DEFAULT_CONFIG, Object.fromEntries(Object.entries(cfg || {}).filter(([k, v]) => v != null && (v !== '' || !['name1', 'name2', 'date', 'timezone', 'theme', 'inviteTemplate'].includes(k)))))
   };

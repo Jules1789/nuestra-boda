@@ -95,7 +95,17 @@
     setText('#dDress', cfg.dressCode); showIf('#cardDress', cfg.dressCode);
     setText('#dLodging', cfg.lodging); showIf('#cardLodging', cfg.lodging);
     setText('#dInstr', cfg.instructions); showIf('#cardInstr', cfg.instructions);
-    setText('#dGifts', cfg.gifts); showIf('#cardGifts', cfg.gifts);
+    // Mesa de regalos: foto y nombre de la tienda llevan directo a la mesa (el enlace no se muestra como texto)
+    const gi = B.giftsInfo(cfg);
+    setText('#dGifts', gi.text);
+    showIf('#dGifts', gi.text);
+    showIf('#cardGifts', gi.url || gi.text || gi.image);
+    if (gi.url) {
+      $('#giftLink').href = gi.url; $('#giftLink').hidden = false;
+      $('#giftLink').innerHTML = '🎁 Ver nuestra mesa en <b>' + esc(gi.store) + '</b>';
+      $('#giftPhoto').href = gi.url;
+    }
+    if (gi.image) { $('#giftImg').src = gi.image; $('#giftPhoto').hidden = false; if (!gi.url) $('#giftPhoto').removeAttribute('href'); }
 
     // Programa
     const lines = String(cfg.itinerary || '').split('\n').map((l) => l.trim()).filter(Boolean);
