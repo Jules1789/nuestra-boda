@@ -10,22 +10,51 @@
   let pollTimer = null, planTimer = null;
 
   /* ------------------------- Acceso ------------------------- */
-  function storedKey() { try { return localStorage.getItem(KEY_STORE) || ''; } catch (e) { return ''; } }
-  function storeKey(k) { try { if (k) localStorage.setItem(KEY_STORE, k); else localStorage.removeItem(KEY_STORE); } catch (e) { /* nada */ } }
+  // La clave se guarda solo si marcas "Recordarme"; si no, dura mientras tengas abierta la pestaña
+  function storedKey() {
+    try { return localStorage.getItem(KEY_STORE) || sessionStorage.getItem(KEY_STORE) || ''; } catch (e) { return ''; }
+  }
+  function storeKey(k, remember) {
+    try {
+      localStorage.removeItem(KEY_STORE); sessionStorage.removeItem(KEY_STORE);
+      if (k) (remember ? localStorage : sessionStorage).setItem(KEY_STORE, k);
+    } catch (e) { /* nada */ }
+  }
 
-  async function login(key, silent) {
+  let loginTry = 0; // solo el intento más reciente puede abrir el panel
+  async function login(key, auto) {
+    const myTry = ++loginTry;
+    const btn = $('#loginBtn');
+    if (!auto) { btn.disabled = true; btn.textContent = 'Verificando…'; }
     try {
       const r = await B.api('admin_login', { key });
-      if (r && r.ok) { S.key = key; storeKey(key); await start(); return true; }
-      if (!silent) B.toast('Clave incorrecta', 'error');
+      if (myTry !== loginTry) return false; // llegó otro intento después: este se ignora
+      if (r && r.ok) {
+        S.key = key;
+        if (!auto) storeKey(key, $('#rememberMe').checked);
+        await start();
+        return true;
+      }
+      if (auto) { storeKey(''); showLoginForm(); }
+      else { B.toast('Clave incorrecta', 'error'); $('#pin').select(); }
     } catch (e) {
-      if (!silent) B.toast('No se pudo conectar con Google Sheets. Revisa la URL en config.js.', 'error', 6000);
+      if (myTry !== loginTry) return false;
+      if (auto) showLoginForm();
+      B.toast('No se pudo conectar con Google Sheets. Revisa tu internet.', 'error', 6000);
+    } finally {
+      if (!auto && myTry === loginTry) { btn.disabled = false; btn.textContent = 'Entrar'; }
     }
     return false;
   }
 
+  function showLoginForm() {
+    $('#loginWait').hidden = true;
+    $('#loginFields').hidden = false;
+    setTimeout(() => $('#pin').focus(), 50);
+  }
+
   async function start() {
-    $('#loginForm button').textContent = 'Cargando…';
+    $('#loginWait').hidden = false; $('#loginWait').textContent = 'Cargando tu boda…'; $('#loginFields').hidden = true;
     await loadAll();
     $('#login').hidden = true;
     $('#app').hidden = false;
@@ -790,7 +819,11 @@
       const r = await B.api('admin_config', { key: S.key, config: data });
       if (r && r.ok) {
         S.config = B.withDefaults(r.config || data);
-        if (data.adminPin !== S.key) { S.key = data.adminPin; storeKey(S.key); }
+        if (data.adminPin !== S.key) {
+          let remembered = false;
+          try { remembered = !!localStorage.getItem(KEY_STORE); } catch (e) { /* nada */ }
+          S.key = data.adminPin; storeKey(S.key, remembered);
+        }
         B.applyTheme(S.config);
         B.toast('Ajustes guardados ✓ La web de la boda ya está actualizada.', 'ok');
         renderAll(true);
@@ -990,10 +1023,12 @@
   /* -------------------- Arranque -------------------- */
   setupGuestUi();
   $('#demoHint').hidden = !B.isDemo();
-  $('#loginForm').onsubmit = (e) => { e.preventDefault(); login($('#pin').value.trim()); };
+  $('#loginForm').onsubmit = (e) => { e.preventDefault(); const k = $('#pin').value.trim(); if (k) login(k, false); };
   $('#btnLogout').onclick = () => { storeKey(''); location.hash = ''; location.reload(); };
   $('#btnRefresh').onclick = async () => { await loadAll(); B.toast('Actualizado ✓', 'ok', 1500); };
   window.addEventListener('beforeunload', (e) => { if (S.planDirty) { e.preventDefault(); e.returnValue = ''; } });
+  // Si guardaste la clave en este dispositivo, entra solo (sin mostrar el recuadro mientras tanto)
   const k = storedKey();
-  if (k) login(k, true);
+  if (k) { $('#loginWait').hidden = false; $('#loginFields').hidden = true; login(k, true); }
+  else showLoginForm();
 })();

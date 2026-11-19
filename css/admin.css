@@ -366,3 +366,8 @@ code { background: var(--bg); padding: 1px 6px; border-radius: 6px; font-size: .
 
 /* Controles deslizables con el color de la boda */
 input[type=range] { accent-color: var(--accent); padding: 0; border: 0; background: none; }
+
+/* Acceso */
+#loginFields { display: grid; gap: 12px; }
+.remember { display: flex; align-items: center; gap: 8px; justify-content: center; font-size: .9rem; color: var(--muted); cursor: pointer; }
+.remember input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
