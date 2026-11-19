@@ -55,6 +55,50 @@
     contactPhone: '',
     countryCode: '52',
     inviteTemplate: '¡Hola {nombre}! 💍 {novios} nos casamos el {fecha} y nos encantaría que nos acompañes. Aquí están todos los detalles y puedes confirmar tu asistencia: {enlace}',
+    lblDetails: 'El gran día',
+    lblWhen: 'Cuándo',
+    lblCalHint: 'Guarda la fecha en tu calendario:',
+    lblCeremony: 'Ceremonia religiosa',
+    lblParty: 'Fiesta',
+    lblDirBtn: 'Cómo llegar',
+    lblItinerary: 'Programa del día',
+    lblDress: 'Código de vestimenta',
+    lblLodging: 'Alojamiento',
+    lblLodgingBtn: 'Ver ubicación',
+    lblLodgingRecs: 'Opciones de hospedaje',
+    lblInstr: 'Indicaciones',
+    lblGifts: 'Mesa de regalos',
+    lblMaps: 'Cómo llegar',
+    lblMapsSub: 'Toca el botón y tu celular te lleva directo.',
+    lblMapsBtn: 'Abrir en Google Maps',
+    lblBetween: 'De la iglesia a la fiesta:',
+    lblPre: 'Video preboda',
+    lblMusic: 'Nuestra música',
+    lblVideo: 'Nuestro video',
+    lblRsvp: 'Confirma tu asistencia',
+    lblRecs: 'Recomendaciones para ese día',
+    lblFaq: 'Preguntas frecuentes',
+    lodgingUrl: '',
+    lodgingRecs: '',
+    hiddenSections: '',
+    iconStyle: 'line',
+    icoWhen: '',
+    icoCeremony: '',
+    icoParty: '',
+    icoDress: '',
+    icoLodging: '',
+    icoInstr: '',
+    icoGifts: '',
+    icoInicio: '',
+    icoHistoria: '',
+    icoPreboda: '',
+    icoDetalles: '',
+    icoUbicacion: '',
+    icoMusica: '',
+    icoVideo: '',
+    icoConfirmar: '',
+    icoRecs: '',
+    icoFaq: '',
     adminPin: '1234'
   };
 
@@ -99,7 +143,9 @@
     ['Código de vestimenta', 'dressExamples', 'Fotos de ejemplo', 'list', 'Agrega fotos de ejemplo con un título y una descripción (p. ej. “Ellas: vestido largo y abrigo ligero”).'],
     ['Recomendaciones para el día', 'recommendations', 'Recomendaciones', 'list', 'Aparecen en “El gran día”: lugares cercanos (un restaurante, una cafetería), qué llevar, consejos… Cada una con foto, descripción y ubicación opcional.'],
     ['Preguntas frecuentes', 'faq', 'Preguntas y respuestas', 'list', 'Transporte, hotel, menú, sesión de fotos, horarios… Tus invitados las pueden buscar en la página.'],
-    ['Detalles', 'lodging', 'Alojamiento', 'textarea'],
+    ['Alojamiento', 'lodging', 'Descripción', 'textarea', 'Ej. Hay cabañas en Vigas del Cielo; reserva con anticipación.'],
+    ['Alojamiento', 'lodgingUrl', 'Ubicación (enlace de Google Maps, opcional)', 'url', 'Aparece como botón dentro de la tarjeta de alojamiento.'],
+    ['Alojamiento', 'lodgingRecs', 'Opciones de hospedaje recomendadas', 'list', 'Hoteles o cabañas cercanos, cada uno con foto, descripción y ubicación. Aparecen debajo de las tarjetas de “El gran día”.'],
     ['Detalles', 'instructions', 'Indicaciones para el día', 'textarea'],
     ['Mesa de regalos', 'giftsImage', 'Foto de la mesa de regalos', 'image', 'Al tocar la foto, tus invitados van directo a la mesa de regalos.'],
     ['Mesa de regalos', 'giftsStore', 'Tienda', 'text', 'Ej. Liverpool. También es un enlace directo a la mesa de regalos.'],
@@ -109,6 +155,50 @@
     ['Música y video', 'playlistUrl', 'Playlist de YouTube Music', 'url', 'Abre tu playlist en YouTube Music → Compartir → Copiar enlace, y pégalo aquí. Se integra sola.'],
     ['Música y video', 'preweddingVideos', 'Videos preboda (YouTube, uno por renglón)', 'textarea', 'Sube tus videos a YouTube como “No listado” y pega aquí los enlaces, uno por renglón.'],
     ['Música y video', 'videoUrl', 'Video de la boda (YouTube)', 'url', 'Enlace de YouTube (video o transmisión en vivo).'],
+    ['Títulos de la página', '_titlesHelp', 'Cambia cualquier título o botón de la web. Si borras uno, vuelve a su texto original.', 'note'],
+    ['Títulos de la página', 'lblDetails', 'Título de “El gran día”', 'text'],
+    ['Títulos de la página', 'lblWhen', 'Tarjeta de la fecha', 'text'],
+    ['Títulos de la página', 'lblCalHint', 'Texto sobre los botones de calendario', 'text'],
+    ['Títulos de la página', 'lblCeremony', 'Tarjeta de la ceremonia', 'text'],
+    ['Títulos de la página', 'lblParty', 'Tarjeta de la fiesta', 'text'],
+    ['Títulos de la página', 'lblDirBtn', 'Botón de las tarjetas de lugar', 'text'],
+    ['Títulos de la página', 'lblItinerary', 'Título del programa del día', 'text'],
+    ['Títulos de la página', 'lblDress', 'Tarjeta de vestimenta', 'text'],
+    ['Títulos de la página', 'lblLodging', 'Tarjeta de alojamiento', 'text'],
+    ['Títulos de la página', 'lblLodgingBtn', 'Botón de ubicación del alojamiento', 'text'],
+    ['Títulos de la página', 'lblLodgingRecs', 'Título de las opciones de hospedaje', 'text'],
+    ['Títulos de la página', 'lblInstr', 'Tarjeta de indicaciones', 'text'],
+    ['Títulos de la página', 'lblGifts', 'Tarjeta de la mesa de regalos', 'text'],
+    ['Títulos de la página', 'lblMaps', 'Título de la sección de mapas', 'text'],
+    ['Títulos de la página', 'lblMapsSub', 'Subtítulo de la sección de mapas', 'text'],
+    ['Títulos de la página', 'lblMapsBtn', 'Botón de Google Maps', 'text'],
+    ['Títulos de la página', 'lblBetween', 'Texto entre los dos lugares', 'text'],
+    ['Títulos de la página', 'lblPre', 'Título del video preboda', 'text'],
+    ['Títulos de la página', 'lblMusic', 'Título de la música', 'text'],
+    ['Títulos de la página', 'lblVideo', 'Título del video de la boda', 'text'],
+    ['Títulos de la página', 'lblRsvp', 'Título de confirmar asistencia', 'text'],
+    ['Títulos de la página', 'lblRecs', 'Título de recomendaciones', 'text'],
+    ['Títulos de la página', 'lblFaq', 'Título de preguntas frecuentes', 'text'],
+    ['Íconos', 'iconStyle', 'Estilo de los íconos', 'iconstyle', 'Líneas finas = más limpio y elegante, toman el color principal. Emojis = los de siempre.'],
+    ['Íconos', '_icons', 'Personaliza cada ícono', 'icons', 'Toca uno para elegir otro ícono, escribir un emoji o subir tu propia imagen.'],
+    ['Íconos', 'icoWhen', '', 'hidden'],
+    ['Íconos', 'icoCeremony', '', 'hidden'],
+    ['Íconos', 'icoParty', '', 'hidden'],
+    ['Íconos', 'icoDress', '', 'hidden'],
+    ['Íconos', 'icoLodging', '', 'hidden'],
+    ['Íconos', 'icoInstr', '', 'hidden'],
+    ['Íconos', 'icoGifts', '', 'hidden'],
+    ['Íconos', 'icoInicio', '', 'hidden'],
+    ['Íconos', 'icoHistoria', '', 'hidden'],
+    ['Íconos', 'icoPreboda', '', 'hidden'],
+    ['Íconos', 'icoDetalles', '', 'hidden'],
+    ['Íconos', 'icoUbicacion', '', 'hidden'],
+    ['Íconos', 'icoMusica', '', 'hidden'],
+    ['Íconos', 'icoVideo', '', 'hidden'],
+    ['Íconos', 'icoConfirmar', '', 'hidden'],
+    ['Íconos', 'icoRecs', '', 'hidden'],
+    ['Íconos', 'icoFaq', '', 'hidden'],
+    ['Secciones visibles', 'hiddenSections', 'Qué se muestra en la web', 'sections', 'Quita la palomita para ocultar una sección o tarjeta completa. Puedes volver a mostrarla cuando quieras.'],
     ['Compartir', 'siteUrl', 'Dirección de tu web de boda', 'url', 'La dirección donde publicaste la web (termina en /).'],
     ['Compartir', 'countryCode', 'Lada del país para WhatsApp', 'text', 'México = 52'],
     ['Compartir', 'inviteTemplate', 'Mensaje de invitación', 'textarea', 'Puedes usar {nombre}, {novios}, {fecha}, {lugar} y {enlace}.'],
@@ -310,10 +400,10 @@
   function places(cfg) {
     const out = [];
     if (cfg.ceremonyVenue || cfg.ceremonyAddress) {
-      out.push({ title: 'Ceremonia religiosa', icon: '⛪', time: formatTime(cfg), name: cfg.ceremonyVenue, address: cfg.ceremonyAddress, mapsUrl: cfg.ceremonyMapsUrl, geo: geoOf(cfg.ceremonyGeo, cfg.ceremonyMapsUrl) });
+      out.push({ title: cfg.lblCeremony || 'Ceremonia religiosa', icon: '⛪', ico: 'icoCeremony', time: formatTime(cfg), name: cfg.ceremonyVenue, address: cfg.ceremonyAddress, mapsUrl: cfg.ceremonyMapsUrl, geo: geoOf(cfg.ceremonyGeo, cfg.ceremonyMapsUrl) });
     }
     if (cfg.venueName || cfg.address) {
-      out.push({ title: out.length ? 'Fiesta' : 'Celebración', icon: '🥂', time: out.length ? fmtHour(cfg.receptionTime) : formatTime(cfg), name: cfg.venueName, address: cfg.address, mapsUrl: cfg.mapsUrl, query: cfg.address, geo: geoOf(cfg.venueGeo, cfg.mapsUrl) });
+      out.push({ title: out.length ? (cfg.lblParty || 'Fiesta') : (cfg.lblParty && cfg.lblParty !== 'Fiesta' ? cfg.lblParty : 'Celebración'), icon: '🥂', ico: 'icoParty', time: out.length ? fmtHour(cfg.receptionTime) : formatTime(cfg), name: cfg.venueName, address: cfg.address, mapsUrl: cfg.mapsUrl, query: cfg.address, geo: geoOf(cfg.venueGeo, cfg.mapsUrl) });
     }
     return out;
   }
@@ -600,8 +690,70 @@
     return r.json();
   }
 
+
+  /* ---- Íconos de línea fina (dibujados aquí, sin depender de nada externo) ---- */
+  const ICONS = {
+    calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+    church: '<path d="M12 2v4M10 4h4M6 21V11l6-5 6 5v10M3 21h18M10 21v-4a2 2 0 0 1 4 0v4"/>',
+    cheers: '<path d="M5 3h5l-.5 6a2 2 0 0 1-4 0zM14 3h5l-.5 6a2 2 0 0 1-4 0zM7.5 11v8M16.5 11v8M5 21h5M14 21h5"/>',
+    rings: '<circle cx="9" cy="14" r="5"/><circle cx="15" cy="14" r="5"/><path d="M10 6l2-3 2 3"/>',
+    hanger: '<path d="M10 5a2 2 0 1 1 2 2v1.5M12 8.5l-8.4 7a1 1 0 0 0 .6 1.8h15.6a1 1 0 0 0 .6-1.8z"/>',
+    house: '<path d="M3 11l9-7 9 7M5 10v10h14V10M10 20v-5h4v5"/>',
+    bed: '<path d="M3 18V6M3 14h18v4M21 14v-2a3 3 0 0 0-3-3h-7v5"/><circle cx="7" cy="11" r="1.6"/>',
+    note: '<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h5"/>',
+    gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v9h14v-9M12 8v13M12 8C10 4 7 4 7 6s3 2 5 2c2 0 5 0 5-2s-3-2-5 2"/>',
+    pin: '<path d="M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/>',
+    music: '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
+    film: '<rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/>',
+    camera: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+    heart: '<path d="M12 20s-8-4.8-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 15.2 12 20 12 20z"/>',
+    envelope: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+    sparkle: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.7 1.8 1.8.7-1.8.7L19 21l-.7-1.8-1.8-.7 1.8-.7z"/>',
+    question: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17h.01"/>',
+    mountain: '<path d="M3 20l6-10 4 6 2-3 6 7z"/>',
+    pine: '<path d="M12 3l5 7h-3l4 6h-5v5h-2v-5H6l4-6H7z"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    car: '<path d="M5 16v-4l2-5h10l2 5v4M3 16h18v3H3zM7 19v2M17 19v2"/>',
+    food: '<path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 1-3 4-3 7h3v11"/>',
+    star: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
+    flower: '<circle cx="12" cy="10" r="2.2"/><path d="M12 7.8C11 4 13 4 12 7.8zM12 12.2V21M12 17c-2-2-5-2-6-1 2 2 4 2 6 1zM12 17c2-2 5-2 6-1-2 2-4 2-6 1z"/><path d="M14.2 10c3.8-1 3.8 1 0 0zM9.8 10c-3.8-1-3.8 1 0 0zM12 7.8c-1-3.8 1-3.8 0 0z"/>',
+    cake: '<path d="M4 21h16M5 21v-7h14v7M7 14v-3h10v3M12 11V8M12 4.5c.8.8.8 2 0 2.5-.8-.5-.8-1.7 0-2.5z"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/>'
+  };
+  // [clave, nombre en el panel, ícono fino, emoji]
+  const ICON_SLOTS = [
+    ['icoWhen', 'Cuándo', 'calendar', '📅'], ['icoCeremony', 'Ceremonia', 'church', '⛪'], ['icoParty', 'Fiesta', 'cheers', '🥂'],
+    ['icoDress', 'Vestimenta', 'hanger', '👔'], ['icoLodging', 'Alojamiento', 'house', '🏡'], ['icoInstr', 'Indicaciones', 'note', '📝'],
+    ['icoGifts', 'Mesa de regalos', 'gift', '🎁'], ['icoInicio', 'Marcador: Inicio', 'mountain', '🏔️'], ['icoHistoria', 'Marcador: Historia', 'heart', '💞'],
+    ['icoPreboda', 'Marcador: Video preboda', 'film', '🎬'], ['icoDetalles', 'Marcador: El gran día', 'calendar', '📅'], ['icoUbicacion', 'Marcador: Cómo llegar', 'pin', '📍'],
+    ['icoMusica', 'Marcador: Música', 'music', '🎶'], ['icoVideo', 'Marcador: Video', 'camera', '📽️'], ['icoConfirmar', 'Marcador: Confirmar', 'envelope', '💌'],
+    ['icoRecs', 'Marcador: Recomendaciones', 'sparkle', '✨'], ['icoFaq', 'Marcador: Preguntas', 'question', '❓']
+  ];
+  // Secciones y tarjetas que se pueden ocultar desde el panel
+  const SECTION_OPTIONS = [
+    ['bienvenida', 'Mensaje de bienvenida'], ['historia', 'Nuestra historia'], ['preboda', 'Video preboda'],
+    ['detalles', 'El gran día (sección completa)'], ['cardWhen', '· Tarjeta “Cuándo” y calendario'], ['placeCards', '· Tarjetas de ceremonia y fiesta'],
+    ['itineraryBox', '· Programa del día'], ['cardDress', '· Código de vestimenta'], ['cardLodging', '· Alojamiento'],
+    ['lodgingRecsBox', '· Opciones de hospedaje'], ['cardInstr', '· Indicaciones'], ['cardGifts', '· Mesa de regalos'],
+    ['ubicacion', 'Cómo llegar (mapas)'], ['musica', 'Nuestra música'], ['video', 'Video de la boda'],
+    ['confirmar', 'Confirmar asistencia'], ['recomendaciones', 'Recomendaciones'], ['faq', 'Preguntas frecuentes']
+  ];
+  function svgIcon(name) {
+    return '<svg class="i-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[name] || ICONS.star) + '</svg>';
+  }
+  // Valor guardado: '' = predeterminado · 'svg:nombre' = ícono fino · https://… = imagen · cualquier otro texto = emoji
+  function iconHtml(cfg, slot, fallbackEmoji) {
+    const def = ICON_SLOTS.find((s) => s[0] === slot) || [slot, '', 'star', fallbackEmoji || '✨'];
+    const v = String((cfg && cfg[slot]) || '').trim();
+    if (!v) return (cfg && cfg.iconStyle === 'emoji') ? '<span class="i-emo">' + def[3] + '</span>' : svgIcon(def[2]);
+    if (v.startsWith('svg:')) return svgIcon(v.slice(4));
+    if (/^(https?:|data:image)/i.test(v)) return '<img class="i-img" src="' + esc(v) + '" alt="">';
+    return '<span class="i-emo">' + esc(v) + '</span>';
+  }
+
   window.Boda = {
-    DEFAULT_CONFIG, FIELDS, STATUS_LABEL, $, $$, esc, norm, newId, splitNames, partySize, memberName, members, attendingIdx, isPlaceholderName, normPhone, phoneList, groupLabel, PALETTES, initials, hueOf,
+    DEFAULT_CONFIG, FIELDS, STATUS_LABEL, ICONS, ICON_SLOTS, SECTION_OPTIONS, svgIcon, iconHtml, $, $$, esc, norm, newId, splitNames, partySize, memberName, members, attendingIdx, isPlaceholderName, normPhone, phoneList, groupLabel, PALETTES, initials, hueOf,
     zonedToDate, eventDates, formatLongDate, formatShortDate, formatTime,
     googleCalUrl, outlookUrl, icsText, icsDataUrl,
     mapsLink, wazeLink, appleMapsLink, mapEmbed, mapQuery, places, fmtHour,

@@ -386,3 +386,23 @@ input[type=range] { accent-color: var(--accent); padding: 0; border: 0; backgrou
 .inv-row .t b { display: block; font-size: .92rem; }
 .inv-row .t small { color: var(--muted); font-size: .76rem; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pp-tabs button[data-tab="inv"] { flex: 0 0 auto; padding: 7px 10px; }
+
+/* Íconos y secciones visibles */
+.i-svg { width: 1em; height: 1em; display: inline-block; vertical-align: -0.15em; }
+.i-img { width: 1.4em; height: 1.4em; border-radius: 50%; object-fit: cover; vertical-align: middle; }
+.seg { display: flex; gap: 8px; flex-wrap: wrap; }
+.seg .btn.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+.seg .i-svg { width: 18px; height: 18px; color: var(--accent); }
+.icon-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.icon-slot { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--card, #fff); cursor: pointer; font: inherit; }
+.icon-slot:hover { border-color: var(--accent); }
+.icon-slot .ic { font-size: 26px; color: var(--accent); line-height: 1; }
+.icon-slot small { font-size: .72rem; color: var(--muted); text-align: center; }
+.icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: 6px; }
+.icon-opt { aspect-ratio: 1; border: 1px solid var(--line); border-radius: 10px; background: none; cursor: pointer; font-size: 26px; color: var(--accent); display: flex; align-items: center; justify-content: center; }
+.icon-opt:hover { border-color: var(--accent); background: rgba(0,0,0,.03); }
+.sec-list { display: grid; gap: 6px; }
+.sec-list label { display: flex; align-items: center; gap: 8px; font-size: .92rem; }
+.sec-list label.sub { padding-left: 24px; }
+.settings .sec-list label { display: flex; justify-content: flex-start; text-align: left; width: auto; }
+.settings .sec-list input[type=checkbox] { width: 18px; height: 18px; min-width: 18px; padding: 0; margin: 0; flex: none; accent-color: var(--accent); }

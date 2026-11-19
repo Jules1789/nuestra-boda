@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/site.css?v=21">
+  <link rel="stylesheet" href="css/site.css?v=22">
 </head>
 <body>
   <div id="loading" class="loading"><div class="rings"></div></div>
@@ -99,26 +99,26 @@
       <p class="lead" id="message"></p>
     </section>
 
-    <section class="section" id="historia" data-mark="Nuestra historia" data-icon="💞" hidden>
+    <section class="section" id="historia" data-mark="Nuestra historia" data-icon="icoHistoria" hidden>
       <h2 id="storyTitle">Nuestra historia</h2>
       <div class="story" id="story"></div>
       <div class="gallery" id="gallery"></div>
     </section>
 
-    <section class="section" id="preboda" data-mark="Video preboda" data-icon="🎬" hidden>
-      <h2>Video preboda</h2>
+    <section class="section" id="preboda" data-mark="Video preboda" data-icon="icoPreboda" hidden>
+      <h2 data-lbl="lblPre">Video preboda</h2>
       <p class="sub">Un poquito de nosotros, antes del gran día.</p>
       <div class="videos" id="preVideos"></div>
     </section>
 
-    <section class="section" id="detalles" data-mark="El gran día" data-icon="📅">
-      <h2>El gran día</h2>
+    <section class="section" id="detalles" data-mark="El gran día" data-icon="icoDetalles">
+      <h2 data-lbl="lblDetails">El gran día</h2>
       <div class="cards">
         <article class="card" id="cardWhen">
-          <div class="ico">📅</div>
-          <h3>Cuándo</h3>
+          <div class="ico" data-ico="icoWhen"></div>
+          <h3 data-lbl="lblWhen">Cuándo</h3>
           <p id="dWhen"></p>
-          <p class="muted cal-hint">Guarda la fecha en tu calendario:</p>
+          <p class="muted cal-hint" data-lbl="lblCalHint">Guarda la fecha en tu calendario:</p>
           <div class="cal-mini" id="calButtons">
             <a class="btn btn-cal" id="calGoogle" target="_blank" rel="noopener"><span>G</span>Google Calendar</a>
             <a class="btn btn-cal" id="calApple" download="boda.ics"><span>A</span>Apple Calendar</a>
@@ -129,43 +129,52 @@
         <div id="placeCards" class="place-cards"></div>
       </div>
 
-      <div class="timeline" id="itinerary"></div>
+      <div class="itinerary-box" id="itineraryBox">
+        <h3 class="tl-title" data-lbl="lblItinerary">Programa del día</h3>
+        <div class="timeline" id="itinerary"></div>
+      </div>
 
       <div class="cards" id="moreCards">
         <article class="card" id="cardDress">
-          <div class="ico">👔</div>
-          <h3>Código de vestimenta</h3>
+          <div class="ico" data-ico="icoDress"></div>
+          <h3 data-lbl="lblDress">Código de vestimenta</h3>
           <p id="dDress" class="pre"></p>
           <div class="examples" id="dressExamples"></div>
         </article>
         <article class="card" id="cardLodging">
-          <div class="ico">🏡</div>
-          <h3>Alojamiento</h3>
+          <div class="ico" data-ico="icoLodging"></div>
+          <h3 data-lbl="lblLodging">Alojamiento</h3>
           <p id="dLodging" class="pre"></p>
+          <a class="btn btn-ghost btn-sm" id="lodgingLink" target="_blank" rel="noopener" hidden></a>
         </article>
         <article class="card" id="cardInstr">
-          <div class="ico">📝</div>
-          <h3>Indicaciones</h3>
+          <div class="ico" data-ico="icoInstr"></div>
+          <h3 data-lbl="lblInstr">Indicaciones</h3>
           <p id="dInstr" class="pre"></p>
         </article>
         <article class="card" id="cardGifts">
-          <div class="ico">🎁</div>
-          <h3>Mesa de regalos</h3>
+          <div class="ico" data-ico="icoGifts"></div>
+          <h3 data-lbl="lblGifts">Mesa de regalos</h3>
           <a class="gift-photo" id="giftPhoto" target="_blank" rel="noopener" hidden><img id="giftImg" alt="Mesa de regalos"></a>
           <p id="dGifts" class="pre"></p>
           <a class="gift-link" id="giftLink" target="_blank" rel="noopener" hidden></a>
         </article>
       </div>
+
+      <div class="recs" id="lodgingRecsBox" hidden>
+        <h3 class="recs-title" data-lbl="lblLodgingRecs">Opciones de hospedaje</h3>
+        <div class="rec-grid" id="lodgingRecs"></div>
+      </div>
     </section>
 
-    <section class="section" id="ubicacion" data-mark="Cómo llegar" data-icon="📍">
-      <h2>Cómo llegar</h2>
-      <p class="sub">Toca el botón y tu celular te lleva directo.</p>
+    <section class="section" id="ubicacion" data-mark="Cómo llegar" data-icon="icoUbicacion">
+      <h2 data-lbl="lblMaps">Cómo llegar</h2>
+      <p class="sub" data-lbl="lblMapsSub">Toca el botón y tu celular te lleva directo.</p>
       <div id="places" class="places"></div>
     </section>
 
-    <section class="section" id="musica" data-mark="Nuestra música" data-icon="🎶" hidden>
-      <h2>Nuestra música</h2>
+    <section class="section" id="musica" data-mark="Nuestra música" data-icon="icoMusica" hidden>
+      <h2 data-lbl="lblMusic">Nuestra música</h2>
       <p class="sub">La playlist de nuestra boda. Escúchala… y sugiérenos tu canción al confirmar.</p>
       <div class="video-wrap" id="playlistWrap"><iframe id="playlistFrame" title="Playlist de la boda" loading="lazy" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>
       <div class="map-buttons">
@@ -173,13 +182,13 @@
       </div>
     </section>
 
-    <section class="section" id="video" data-mark="Video de la boda" data-icon="📽️" hidden>
-      <h2>Nuestro video</h2>
+    <section class="section" id="video" data-mark="Video de la boda" data-icon="icoVideo" hidden>
+      <h2 data-lbl="lblVideo">Nuestro video</h2>
       <div class="video-wrap"><iframe id="videoFrame" title="Video de la boda" loading="lazy" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>
     </section>
 
-    <section class="section rsvp" id="confirmar" data-mark="Confirmar asistencia" data-icon="💌">
-      <h2>Confirma tu asistencia</h2>
+    <section class="section rsvp" id="confirmar" data-mark="Confirmar asistencia" data-icon="icoConfirmar">
+      <h2 data-lbl="lblRsvp">Confirma tu asistencia</h2>
       <p class="sub" id="rsvpSub">Nos ayudará mucho saber si nos acompañas.</p>
 
       <form id="rsvpForm" class="rsvp-form" novalidate>
@@ -265,14 +274,14 @@
       </div>
     </section>
 
-    <section class="section" id="recomendaciones" data-mark="Recomendaciones" data-icon="✨" hidden>
-      <h2>Recomendaciones para ese día</h2>
+    <section class="section" id="recomendaciones" data-mark="Recomendaciones" data-icon="icoRecs" hidden>
+      <h2 data-lbl="lblRecs">Recomendaciones para ese día</h2>
       <p class="sub">Lugares cercanos, qué llevar y algunos consejos para disfrutar al máximo.</p>
       <div class="rec-grid" id="recs"></div>
     </section>
 
-    <section class="section" id="faq" data-mark="Preguntas frecuentes" data-icon="❓" hidden>
-      <h2>Preguntas frecuentes</h2>
+    <section class="section" id="faq" data-mark="Preguntas frecuentes" data-icon="icoFaq" hidden>
+      <h2 data-lbl="lblFaq">Preguntas frecuentes</h2>
       <p class="sub">Todo lo que necesitas saber para ese día.</p>
       <input class="faq-search" id="faqSearch" type="search" placeholder="🔎 Busca tu duda: transporte, hotel, menú, fotos…">
       <div class="faq-list" id="faqList"></div>
@@ -300,8 +309,8 @@
     <button class="lb-nav next" id="lbNext" aria-label="Siguiente">›</button>
   </div>
 
-  <script src="js/config.js?v=21"></script>
-  <script src="js/common.js?v=21"></script>
-  <script src="js/site.js?v=21"></script>
+  <script src="js/config.js?v=22"></script>
+  <script src="js/common.js?v=22"></script>
+  <script src="js/site.js?v=22"></script>
 </body>
 </html>

@@ -748,6 +748,26 @@
       if (!s) { s = { name: sec, html: '' }; sections.push(s); }
       const v = S.config[key] == null ? '' : S.config[key];
       if (type === 'hidden') { s.html += '<input type="hidden" name="' + key + '" value="' + esc(v) + '">'; return; }
+      if (type === 'note') { s.html += '<p class="small muted">' + esc(label) + '</p>'; return; }
+      if (type === 'iconstyle') {
+        s.html += '<div class="frow"><span>' + esc(label) + '</span><input type="hidden" name="' + key + '" value="' + esc(v || 'line') + '">' +
+          '<div class="seg" data-iconstyle>' + [['line', B.svgIcon('calendar') + B.svgIcon('church') + B.svgIcon('gift') + ' Líneas finas'], ['emoji', '📅⛪🎁 Emojis']].map(([val, txt]) =>
+            '<button type="button" class="btn btn-sm' + ((v || 'line') === val ? ' on' : '') + '" data-val="' + val + '">' + txt + '</button>').join('') + '</div>' +
+          (help ? '<small>' + esc(help) + '</small>' : '') + '</div>';
+        return;
+      }
+      if (type === 'icons') {
+        s.html += '<div class="frow"><span>' + esc(label) + '</span><div class="icon-slots" data-icons></div>' + (help ? '<small>' + esc(help) + '</small>' : '') + '</div>';
+        return;
+      }
+      if (type === 'sections') {
+        const hid = String(v || '').split(',').map((x) => x.trim()).filter(Boolean);
+        s.html += '<div class="frow"><span>' + esc(label) + '</span><input type="hidden" name="' + key + '" value="' + esc(v) + '">' +
+          '<div class="sec-list" data-sections>' + B.SECTION_OPTIONS.map(([id, txt]) =>
+            '<label class="' + (txt[0] === '·' ? 'sub' : '') + '"><input type="checkbox" value="' + id + '"' + (hid.includes(id) ? '' : ' checked') + '> ' + esc(txt.replace(/^·\s*/, '')) + '</label>').join('') + '</div>' +
+          (help ? '<small>' + esc(help) + '</small>' : '') + '</div>';
+        return;
+      }
       if (type === 'palette') {
         s.html += '<div class="frow"><span>' + esc(label) + '</span><div class="palettes">' + B.PALETTES.map((pl, i) =>
           '<button type="button" class="pal" data-pal="' + i + '" title="' + esc(pl.name) + '">' +
@@ -782,6 +802,16 @@
     form.dataset.ready = '1';
     $$('[data-photo]', form).forEach(renderPhotoField);
     $$('[data-list]', form).forEach(renderListField);
+    // Secciones visibles: las palomitas quitadas se guardan como lista de ocultas
+    $$('[data-sections]', form).forEach((box) => {
+      const hidden = form.elements.hiddenSections;
+      box.onchange = () => { hidden.value = $$('input[type=checkbox]', box).filter((c) => !c.checked).map((c) => c.value).join(','); };
+    });
+    // Estilo de íconos
+    $$('[data-iconstyle]', form).forEach((box) => {
+      $$('button', box).forEach((b) => { b.onclick = () => { form.elements.iconStyle.value = b.dataset.val; $$('button', box).forEach((x) => x.classList.toggle('on', x === b)); drawIconSlots(); }; });
+    });
+    drawIconSlots();
     // Paletas: llenan los colores para que los veas; se guardan con "Guardar cambios"
     const COLOR_KEYS = ['theme', 'colorBg', 'colorCard', 'colorText', 'colorNature'];
     const previewColors = () => { const o = {}; COLOR_KEYS.forEach((k) => { if (form.elements[k]) o[k] = form.elements[k].value; }); B.applyTheme(o); };
@@ -907,10 +937,55 @@
     };
   }
 
+
+  /* ---- Íconos personalizables: ícono fino, emoji o imagen propia ---- */
+  function drawIconSlots() {
+    const form = $('#settingsForm');
+    const box = $('[data-icons]', form);
+    if (!box) return;
+    const cur = () => { const o = { iconStyle: form.elements.iconStyle ? form.elements.iconStyle.value : 'line' }; B.ICON_SLOTS.forEach(([k]) => { o[k] = form.elements[k] ? form.elements[k].value : ''; }); return o; };
+    const c = cur();
+    box.innerHTML = B.ICON_SLOTS.map(([k, name]) => '<button type="button" class="icon-slot" data-slot="' + k + '"><span class="ic">' + B.iconHtml(c, k) + '</span><small>' + esc(name) + '</small></button>').join('');
+    $$('[data-slot]', box).forEach((b) => { b.onclick = () => openIconPicker(b.dataset.slot); });
+  }
+
+  function openIconPicker(slot) {
+    const form = $('#settingsForm');
+    const input = form.elements[slot];
+    const def = B.ICON_SLOTS.find((s) => s[0] === slot);
+    const set = async (val, save) => {
+      input.value = val;
+      drawIconSlots();
+      closeModal();
+      if (save) {
+        try { await savePhotoConfig(slot, val); B.toast('Imagen guardada ✓', 'ok', 1800); } catch (e) { B.toast('No se pudo guardar: ' + esc(e.message), 'error'); }
+      } else B.toast('Ícono elegido. Pulsa <b>Guardar cambios</b> para verlo en la web.', 'info', 2600);
+    };
+    $('#modalBody').innerHTML = '<h3>Ícono: ' + esc(def[1]) + '</h3>' +
+      '<p class="small muted">Elige un ícono de línea fina:</p>' +
+      '<div class="icon-grid">' + Object.keys(B.ICONS).map((n) => '<button type="button" class="icon-opt" data-svg="' + n + '" title="' + n + '">' + B.svgIcon(n) + '</button>').join('') + '</div>' +
+      '<p class="small muted" style="margin-top:14px">…o escribe un emoji:</p>' +
+      '<div class="link-box"><input id="icoEmoji" maxlength="8" placeholder="Ej. 💍" value="' + esc(/^(svg:|https?:|data:)/.test(input.value) ? '' : input.value) + '"><button class="btn" type="button" id="icoEmojiOk">Usar emoji</button></div>' +
+      '<p class="small muted" style="margin-top:14px">…o sube tu propia imagen (se ve en círculo):</p>' +
+      '<label class="btn">Subir imagen<input type="file" accept="image/*" hidden id="icoFile"></label> ' +
+      '<button type="button" class="btn" id="icoReset">Volver al predeterminado</button>';
+    $('#modal').hidden = false;
+    $$('[data-svg]', $('#modalBody')).forEach((b) => { b.onclick = () => set('svg:' + b.dataset.svg); });
+    $('#icoEmojiOk').onclick = () => { const v = $('#icoEmoji').value.trim(); if (v) set(v); };
+    $('#icoReset').onclick = () => set('');
+    $('#icoFile').onchange = async () => {
+      const f = $('#icoFile').files && $('#icoFile').files[0];
+      if (!f) return;
+      B.toast('Subiendo imagen…', 'info', 2000);
+      try { set(await uploadPhoto(f, false), true); } catch (e) { B.toast('No se pudo subir: ' + esc(e.message), 'error', 5000); }
+    };
+  }
+
   /* ---- Listas editables: fotos de vestimenta, recomendaciones y preguntas frecuentes ---- */
   const LIST_SCHEMAS = {
     dressExamples: { add: '＋ Agregar ejemplo', item: 'Ejemplo', fields: [['image', 'Foto', 'image'], ['title', 'Título', 'text', 'Ej. Ellas'], ['text', 'Descripción', 'textarea', 'Ej. Vestido largo en tonos tierra y un abrigo ligero']] },
     recommendations: { add: '＋ Agregar recomendación', item: 'Recomendación', fields: [['image', 'Foto', 'image'], ['title', 'Título', 'text', 'Ej. Restaurante La Cabaña'], ['text', 'Descripción', 'textarea', 'Ej. A 5 minutos del salón; buen lugar para desayunar el domingo'], ['url', 'Ubicación (enlace de Google Maps, opcional)', 'url', 'https://maps.app.goo.gl/…']] },
+    lodgingRecs: { add: '＋ Agregar hospedaje', item: 'Hospedaje', fields: [['image', 'Foto', 'image'], ['title', 'Nombre', 'text', 'Ej. Cabañas Vigas del Cielo'], ['text', 'Descripción', 'textarea', 'Ej. A 2 minutos del salón; menciona la boda para precio especial'], ['url', 'Ubicación (enlace de Google Maps, opcional)', 'url', 'https://maps.app.goo.gl/…']] },
     faq: { add: '＋ Agregar pregunta', item: 'Pregunta', fields: [['q', 'Pregunta', 'text', 'Ej. ¿Hay transporte de la iglesia al salón?'], ['a', 'Respuesta', 'textarea', 'Ej. Sí, saldrá un camión a las 18:15 desde la iglesia.']] }
   };
 

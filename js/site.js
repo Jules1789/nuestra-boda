@@ -98,9 +98,9 @@
     setText('#message', cfg.message);
     setText('#dWhen', longDate);
 
-    $('#placeCards').innerHTML = places.map((p) => '<article class="card"><div class="ico">' + p.icon + '</div><h3>' + esc(p.title) + '</h3>' +
+    $('#placeCards').innerHTML = places.map((p) => '<article class="card"><div class="ico">' + B.iconHtml(cfg, p.ico) + '</div><h3>' + esc(p.title) + '</h3>' +
       (p.time ? '<p class="time">' + esc(p.time) + '</p>' : '') + '<p>' + esc(p.name || '') + '</p><p class="muted">' + esc(p.address || '') + '</p>' +
-      '<a class="btn btn-ghost btn-sm" target="_blank" rel="noopener" href="' + esc(B.mapsLink(p)) + '">📍 Cómo llegar</a></article>').join('');
+      '<a class="btn btn-ghost btn-sm" target="_blank" rel="noopener" href="' + esc(B.mapsLink(p)) + '">' + B.svgIcon('pin') + ' ' + esc(cfg.lblDirBtn || 'Cómo llegar') + '</a></article>').join('');
     // Código de vestimenta con fotos de ejemplo (clic = verla en grande)
     const dress = B.parseItems(cfg.dressExamples);
     setText('#dDress', cfg.dressCode);
@@ -114,12 +114,17 @@
     // Recomendaciones para ese día: foto, título, descripción y ubicación
     const recs = B.parseItems(cfg.recommendations).filter((r) => r.title || r.text || r.image);
     showIf('#recomendaciones', recs.length);
-    $('#recs').innerHTML = recs.map((r) => {
+    const recCard = (r) => {
       const img = r.image ? '<img loading="lazy" src="' + esc(r.image) + '" alt="' + esc(r.title || '') + '">' : '';
       return '<article class="rec">' + (img ? (r.url ? '<a class="rec-img" target="_blank" rel="noopener" href="' + esc(r.url) + '">' + img + '</a>' : '<div class="rec-img">' + img + '</div>') : '') +
         '<div class="rec-body">' + (r.title ? '<h4>' + esc(r.title) + '</h4>' : '') + (r.text ? '<p class="pre">' + esc(r.text) + '</p>' : '') +
-        (r.url ? '<a class="btn btn-ghost btn-sm" target="_blank" rel="noopener" href="' + esc(r.url) + '">📍 Ver ubicación</a>' : '') + '</div></article>';
-    }).join('');
+        (r.url ? '<a class="btn btn-ghost btn-sm" target="_blank" rel="noopener" href="' + esc(r.url) + '">' + B.svgIcon('pin') + ' Ver ubicación</a>' : '') + '</div></article>';
+    };
+    $('#recs').innerHTML = recs.map(recCard).join('');
+    // Opciones de hospedaje (mismo formato que las recomendaciones)
+    const lrecs = B.parseItems(cfg.lodgingRecs).filter((r) => r.title || r.text || r.image);
+    showIf('#lodgingRecsBox', lrecs.length);
+    $('#lodgingRecs').innerHTML = lrecs.map(recCard).join('');
 
     // Preguntas frecuentes con buscador
     const faq = B.parseItems(cfg.faq).filter((f) => f.q && f.a);
@@ -131,7 +136,9 @@
       $$('.faq-item').forEach((d) => { const ok = !q || B.norm(d.textContent).includes(q); d.hidden = !ok; if (ok) shown++; if (q && ok) d.open = true; });
       $('#faqEmpty').hidden = shown > 0;
     };
-    setText('#dLodging', cfg.lodging); showIf('#cardLodging', cfg.lodging);
+    setText('#dLodging', cfg.lodging); showIf('#dLodging', cfg.lodging); showIf('#cardLodging', cfg.lodging || cfg.lodgingUrl);
+    if (cfg.lodgingUrl) { $('#lodgingLink').href = cfg.lodgingUrl; $('#lodgingLink').innerHTML = B.svgIcon('pin') + ' ' + esc(cfg.lblLodgingBtn || 'Ver ubicación'); }
+    showIf('#lodgingLink', cfg.lodgingUrl);
     setText('#dInstr', cfg.instructions); showIf('#cardInstr', cfg.instructions);
     // Mesa de regalos: foto y nombre de la tienda llevan directo a la mesa (el enlace no se muestra como texto)
     const gi = B.giftsInfo(cfg);
@@ -147,6 +154,7 @@
 
     // Programa
     const lines = String(cfg.itinerary || '').split('\n').map((l) => l.trim()).filter(Boolean);
+    showIf('#itineraryBox', lines.length);
     $('#itinerary').innerHTML = lines.map((l) => {
       const [t, ...rest] = l.split('|');
       const what = rest.join('|').trim();
@@ -174,13 +182,13 @@
 
     // Mapa
     $('#places').innerHTML = places.map((p, i) => '<div class="place">' +
-      '<h3><span>' + p.icon + '</span> ' + esc(p.title) + (p.time ? ' · ' + esc(p.time) : '') + '</h3>' +
+      '<h3><span class="p-ico">' + B.iconHtml(cfg, p.ico) + '</span> ' + esc(p.title) + (p.time ? ' · ' + esc(p.time) : '') + '</h3>' +
       '<p class="muted">' + esc([p.name, p.address].filter(Boolean).join(' · ')) + '</p>' +
       '<div class="map-wrap"><iframe title="Mapa: ' + esc(p.title) + '" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="' + esc(B.mapEmbed(p)) + '"></iframe></div>' +
-      '<div class="map-buttons"><a class="btn btn-primary" target="_blank" rel="noopener" href="' + esc(B.mapsLink(p)) + '">Abrir en Google Maps</a>' +
+      '<div class="map-buttons"><a class="btn btn-primary" target="_blank" rel="noopener" href="' + esc(B.mapsLink(p)) + '">' + esc(cfg.lblMapsBtn || 'Abrir en Google Maps') + '</a>' +
       '<a class="btn btn-ghost" target="_blank" rel="noopener" href="' + esc(B.wazeLink(p)) + '">Waze</a>' +
       '<a class="btn btn-ghost" target="_blank" rel="noopener" href="' + esc(B.appleMapsLink(p)) + '">Apple Maps</a></div>' +
-      (i < places.length - 1 ? '<p class="between">De la iglesia a la fiesta: ' + esc(places[i + 1].time ? 'te esperamos a las ' + places[i + 1].time : '') + '</p>' : '') +
+      (i < places.length - 1 ? '<p class="between">' + esc(cfg.lblBetween || 'De la iglesia a la fiesta:') + ' ' + esc(places[i + 1].time ? 'te esperamos a las ' + places[i + 1].time : '') + '</p>' : '') +
       '</div>').join('');
 
     // Música y video de la boda
@@ -213,6 +221,18 @@
       const d = new Date(cfg.rsvpDeadline + 'T12:00');
       if (!isNaN(d)) setText('#deadline', 'Por favor confirma antes del ' + d.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' }) + '.');
     }
+
+    // Títulos personalizados e íconos
+    $$('[data-lbl]').forEach((el) => { const v = cfg[el.dataset.lbl]; if (v) el.textContent = v; });
+    $$('[data-ico]').forEach((el) => { el.innerHTML = B.iconHtml(cfg, el.dataset.ico); });
+    // Secciones que los novios decidieron ocultar
+    String(cfg.hiddenSections || '').split(',').map((x) => x.trim()).filter(Boolean).forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.hidden = true;
+      if (id === 'historia') showIf('#navHistoria', false);
+      if (id === 'cardWhen' || id === 'detalles') showIf('.hero-cta a[href="#cardWhen"]', false);
+      if (id === 'confirmar') showIf('.hero-cta a[href="#confirmar"]', false);
+    });
 
     heroPines();
     addDividers();
@@ -315,8 +335,11 @@
 
   /* -------- Marcadores al final -------- */
   function renderBookmarks() {
-    const items = [['inicio', 'Inicio', '🏔️']].concat($$('main > section[data-icon]').filter((s) => !s.hidden).map((s) => [s.id, s.dataset.mark, s.dataset.icon]));
-    $('#bookmarks').innerHTML = items.map(([id, label, ic]) => '<a class="bm' + (id === 'confirmar' ? ' cta' : '') + '" href="#' + id + '"><i>' + ic + '</i>' + esc(label) + '</a>').join('');
+    const items = [['inicio', 'Inicio', 'icoInicio']].concat($$('main > section[data-icon]').filter((s) => !s.hidden).map((s) => {
+      const h2 = $('h2', s);
+      return [s.id, (h2 && s.dataset.mark !== h2.textContent && h2.dataset.lbl && cfg[h2.dataset.lbl] !== B.DEFAULT_CONFIG[h2.dataset.lbl]) ? h2.textContent : s.dataset.mark, s.dataset.icon];
+    }));
+    $('#bookmarks').innerHTML = items.map(([id, label, ic]) => '<a class="bm' + (id === 'confirmar' ? ' cta' : '') + '" href="#' + id + '"><i>' + B.iconHtml(cfg, ic) + '</i>' + esc(label) + '</a>').join('');
   }
 
   /* -------- Cuenta regresiva -------- */
