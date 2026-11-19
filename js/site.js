@@ -32,15 +32,15 @@
   // Saludo con su nombre o el de su familia y sus lugares
   function personalize() {
     if (!guest) return;
+    // Debajo de la cuenta regresiva: "Con cariño, esta invitación es para — Familia Bustos Reyna"
     const label = B.groupLabel(guest);
-    setText('#heroGreeting', 'Para ' + label);
     const n = (guest.members || []).length || Math.max(1, guest.invited || 1);
-    const note = $('#personalNote');
-    note.hidden = false;
-    note.innerHTML = (n > 1 ? 'Queridos' : 'Querid@') + ' <b>' + esc(label) + '</b>: ' +
-      (n > 1 ? 'hemos reservado <b>' + n + ' lugares</b> para ustedes.' : 'hemos reservado <b>un lugar</b> especialmente para ti.');
+    $('#heroFor').hidden = false;
+    setText('#forName', label);
+    setText('#forText', n > 1 ? 'Hemos reservado ' + n + ' lugares para ustedes.' : 'Hemos reservado un lugar especialmente para ti.');
     // La cabaña de cada quien es privada: solo la ven los novios en el panel
   }
+
 
   function setText(sel, txt) { const el = $(sel); if (el) el.textContent = txt || ''; }
   function showIf(sel, cond) { const el = $(sel); if (el) el.hidden = !cond; }

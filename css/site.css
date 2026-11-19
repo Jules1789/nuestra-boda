@@ -372,3 +372,11 @@ body.locked { overflow: hidden; }
 /* Hashtags del pie */
 .hashtags { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; margin: 8px 0 !important; }
 .hashtags span { color: var(--accent); font-weight: 500; }
+
+/* Nombre de la persona o familia, debajo de la cuenta regresiva */
+.hero-for { margin: 22px auto 4px; max-width: 640px; animation: rise 1s ease .3s both; }
+.for-label { margin: 0; text-transform: uppercase; letter-spacing: .28em; font-size: .74rem; color: var(--muted); }
+.for-name { margin: 6px 0 4px; font: 400 clamp(1.9rem, 6.2vw, 3rem)/1.1 var(--serif); }
+.for-text { margin: 0; font: italic 400 clamp(1.05rem, 3vw, 1.3rem)/1.4 var(--serif); color: var(--muted); }
+.hero.has-photo .for-label, .hero.has-photo .for-text { color: rgba(255, 255, 255, .9); }
+.hero.has-photo .for-name { text-shadow: 0 2px 18px rgba(0, 0, 0, .35); }

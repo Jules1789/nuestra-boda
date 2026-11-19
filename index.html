@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/site.css?v=15">
+  <link rel="stylesheet" href="css/site.css?v=16">
 </head>
 <body>
   <div id="loading" class="loading"><div class="rings"></div></div>
@@ -69,6 +69,11 @@
         <div><b id="cdS">--</b><span>seg</span></div>
       </div>
       <p class="cd-msg" id="cdMsg" hidden></p>
+      <div class="hero-for" id="heroFor" hidden>
+        <p class="for-label">Con cariño, esta invitación es para</p>
+        <p class="for-name" id="forName"></p>
+        <p class="for-text" id="forText"></p>
+      </div>
       <div class="hero-cta">
         <a href="#confirmar" class="btn btn-primary">Confirmar asistencia</a>
         <a href="#cardWhen" class="btn btn-ghost">Guardar la fecha</a>
@@ -91,7 +96,6 @@
     <section class="section intro" id="bienvenida" data-mark="Bienvenida">
       <div class="ornament">❦</div>
       <p class="lead" id="message"></p>
-      <p class="personal" id="personalNote" hidden></p>
     </section>
 
     <section class="section" id="historia" data-mark="Nuestra historia" data-icon="💞" hidden>
@@ -295,8 +299,8 @@
     <button class="lb-nav next" id="lbNext" aria-label="Siguiente">›</button>
   </div>
 
-  <script src="js/config.js?v=15"></script>
-  <script src="js/common.js?v=15"></script>
-  <script src="js/site.js?v=15"></script>
+  <script src="js/config.js?v=16"></script>
+  <script src="js/common.js?v=16"></script>
+  <script src="js/site.js?v=16"></script>
 </body>
 </html>
