@@ -377,3 +377,12 @@ input[type=range] { accent-color: var(--accent); padding: 0; border: 0; backgrou
 .resizer text { font: 700 12px sans-serif; fill: var(--accent); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
 .pl-stage:not(.organize) .itm { pointer-events: none; }
 .sizebox { margin-bottom: 4px; }
+
+/* Selección múltiple e inventario */
+.sel-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+.sel-list span { background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: .82rem; }
+.inv-row { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: #fff; margin-bottom: 6px; }
+.inv-row .t { flex: 1; min-width: 0; }
+.inv-row .t b { display: block; font-size: .92rem; }
+.inv-row .t small { color: var(--muted); font-size: .76rem; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-tabs button[data-tab="inv"] { flex: 0 0 auto; padding: 7px 10px; }

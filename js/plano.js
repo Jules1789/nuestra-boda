@@ -24,6 +24,8 @@
   let selection = new Set();        // claves "idInvitado#n" seleccionadas
   let moveMsg = '';                 // texto para la barra de selección
   let selTable = null;
+  let multi = new Set();            // varias mesas/elementos seleccionados (Shift/Ctrl o botón Varios)
+  let multiMode = false;
   let panel = { type: 'home' };
   let homeTab = 'sin';
   let sinFilter = 'all', sinSearch = '', pickSearch = '';
@@ -208,7 +210,8 @@
   }
 
   function bbox(tables, withItems = true) {
-    const its = withItems ? items() : [];
+    tables = tables.filter((t) => !t.stored);
+    const its = withItems ? items().filter((it) => !it.stored) : [];
     if (!tables.length && !its.length) return { x: -300, y: -200, w: 600, h: 400 };
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     tables.forEach((t) => { const e = geom(t).ext + (showNames ? 30 : 6); x0 = Math.min(x0, t.x - e); y0 = Math.min(y0, t.y - e); x1 = Math.max(x1, t.x + e); y1 = Math.max(y1, t.y + e); });
@@ -224,6 +227,7 @@
     const names = opts.names != null ? opts.names : showNames;
     let html = '';
     plan().tables.forEach((t) => {
+      if (t.stored) return; // guardada en el inventario
       const g = geom(t);
       const rot = t.rot || 0;
       const arr = occ[t.id] || [];
@@ -232,7 +236,7 @@
       const free = t.seats - used + selKeysHere;
       let cls = 'tbl';
       if (!opts.export) {
-        if (selTable === t.id) cls += ' selected';
+        if (selTable === t.id || multi.has(t.id)) cls += ' selected';
         if (need && mode === 'sentar') cls += free >= need ? ' fits' : ' nofit';
       }
       html += '<g class="' + cls + '" data-table="' + t.id + '" data-obj="' + t.id + '" transform="translate(' + t.x + ' ' + t.y + ') rotate(' + rot + ')">';
@@ -277,12 +281,12 @@
     // Primero las áreas (al fondo), luego paredes/ventanas y al final lo demás.
     // opts.layer: 'below' (debajo de las mesas) o 'above' (encima, p. ej. el pastel en la mesa de novios)
     const order = { area: 0, dance: 1, wall: 2, window: 2 };
-    const pick = items().filter((it) => !opts.layer || (opts.layer === 'above') === !!it.top);
+    const pick = items().filter((it) => !it.stored && (!opts.layer || (opts.layer === 'above') === !!it.top));
     return pick.slice().sort((a, b) => (order[a.kind] ?? 3) - (order[b.kind] ?? 3)).map((it) => {
       const k = ITEM_KINDS[it.kind] || ITEM_KINDS.other;
       const w = it.w || k.w, h = it.h || k.h, rot = it.rot || 0;
       const label = it.label != null && it.label !== '' ? it.label : k.name;
-      const sel = !opts.export && selTable === it.id ? ' selected' : '';
+      const sel = !opts.export && (selTable === it.id || multi.has(it.id)) ? ' selected' : '';
       let body = '';
       if (it.kind === 'area') {
         body = '<rect class="i-area" x="' + (-w / 2) + '" y="' + (-h / 2) + '" width="' + w + '" height="' + h + '" rx="6"/>' +
@@ -399,12 +403,17 @@
       ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (ptrs.size === 1) {
         const hit = hitTest(e.target);
-        gest = { type: 'pan', start: { x: e.clientX, y: e.clientY }, moved: false, hit, tx: view.tx, ty: view.ty };
+        gest = { type: 'pan', start: { x: e.clientX, y: e.clientY }, moved: false, hit, tx: view.tx, ty: view.ty, mod: e.shiftKey || e.ctrlKey || e.metaKey };
         if (mode === 'organizar' && hit.tid) {
           const t = obj(hit.tid);
           if (hit.kind === 'resize') { gest.type = 'resize'; gest.tid = t.id; gest.snap = snapshot(); }
           else if (hit.kind === 'handle') { gest.type = 'rotate'; gest.tid = t.id; gest.snap = snapshot(); }
-          else { const w = toWorld(e.clientX, e.clientY); gest.type = 'drag'; gest.tid = t.id; gest.off = { x: w.x - t.x, y: w.y - t.y }; gest.snap = snapshot(); }
+          else {
+            const w = toWorld(e.clientX, e.clientY);
+            gest.type = 'drag'; gest.tid = t.id; gest.off = { x: w.x - t.x, y: w.y - t.y }; gest.snap = snapshot();
+            // Si es parte de una selección de varios, se mueven todos juntos
+            if (multi.has(t.id) && multi.size > 1) { gest.w0 = w; gest.group = Array.from(multi).map((id) => obj(id)).filter(Boolean).map((o) => ({ o, x: o.x, y: o.y })); }
+          }
         }
         svg.classList.add('grabbing');
       } else if (ptrs.size === 2) {
@@ -433,6 +442,13 @@
           applyView();
           break;
         case 'drag': {
+          if (gest.group) {
+            const w = toWorld(p.x, p.y);
+            const dx = Math.round((w.x - gest.w0.x) / 10) * 10, dy = Math.round((w.y - gest.w0.y) / 10) * 10;
+            gest.group.forEach((g) => { g.o.x = g.x + dx; g.o.y = g.y + dy; });
+            render();
+            break;
+          }
           const t = obj(gest.tid); const w = toWorld(p.x, p.y);
           t.x = Math.round((w.x - gest.off.x) / 10) * 10;
           t.y = Math.round((w.y - gest.off.y) / 10) * 10;
@@ -489,7 +505,7 @@
       if (ptrs.size === 0) {
         svg.classList.remove('grabbing');
         const g = gest; gest = null;
-        if (!g.moved && e.type === 'pointerup' && g.hit) onTap(g.hit);
+        if (!g.moved && e.type === 'pointerup' && g.hit) onTap(g.hit, g.mod);
         else if (g.moved && g.snap && ['drag', 'rotate', 'rotate2', 'resize'].includes(g.type)) {
           if (g.type === 'resize' && panel.type === 'item') renderPanel();
           if (g.snap !== snapshot()) { pushUndo(g.snap); commit(); }
@@ -513,9 +529,20 @@
   }
 
   /* ====================== Toques ====================== */
-  function onTap(hit) {
+  function onTap(hit, mod) {
     if (hit.kind === 'item' && mode !== 'organizar') hit = { kind: 'bg' };
+    if (mode === 'organizar' && (mod || multiMode)) {
+      // Shift/Ctrl + clic (o el botón "Varios"): agrega o quita de la selección
+      if (hit.tid) {
+        if (selTable && obj(selTable) && !multi.size) multi.add(selTable);
+        if (multi.has(hit.tid)) multi.delete(hit.tid); else multi.add(hit.tid);
+        selTable = null;
+        openPanel(multi.size ? { type: 'multi' } : { type: 'home' });
+      }
+      return;
+    }
     if (mode === 'organizar') {
+      multi.clear();
       if (hit.tid && item(hit.tid)) { selTable = hit.tid; openPanel({ type: 'item', id: hit.tid }); }
       else if (hit.tid) { selTable = hit.tid; openPanel({ type: 'table', id: hit.tid }); }
       else { selTable = null; openPanel({ type: 'home' }); }
@@ -648,8 +675,8 @@
     groups.forEach(({ g, keys }) => {
       const occ = occupancy();
       const freeOf = (t) => occ[t.id].filter((x) => !x).length;
-      const sameFam = plan().tables.filter((t) => occ[t.id].some((k) => { const o = k && keyGuest(k); return o && (o.id === g.id || (g.group && o.group === g.group)); }));
-      const cands = (sameFam.filter((t) => freeOf(t) >= keys.length).length ? sameFam : plan().tables).filter((t) => freeOf(t) >= keys.length && t.shape !== 'presidential' && t.shape !== 'novios');
+      const sameFam = plan().tables.filter((t) => !t.stored && occ[t.id].some((k) => { const o = k && keyGuest(k); return o && (o.id === g.id || (g.group && o.group === g.group)); }));
+      const cands = (sameFam.filter((t) => freeOf(t) >= keys.length).length ? sameFam : plan().tables).filter((t) => !t.stored && freeOf(t) >= keys.length && t.shape !== 'presidential' && t.shape !== 'novios');
       cands.sort((a, b) => freeOf(a) - freeOf(b));
       const t = cands[0];
       if (t && seatKeys(keys, t.id, null, { silent: true, noUndo: true, keepPanel: true })) ok++;
@@ -735,6 +762,68 @@
           addTables(names, shape, s, size);
         };
       });
+  }
+
+  /* ---- Inventario: guardar mesas/elementos con sus invitados, sacarlos y eliminarlos ---- */
+  function describe(ids) {
+    const occ = occupancy();
+    const ts = ids.map(table).filter(Boolean), its = ids.map(item).filter(Boolean);
+    const people = ts.reduce((a, t) => a + (occ[t.id] || []).filter(Boolean).length, 0);
+    return { ts, its, people };
+  }
+
+  function storeObjs(ids) {
+    const { ts, its, people } = describe(ids);
+    if (!ts.length && !its.length) return;
+    pushUndo();
+    ts.concat(its).forEach((o) => { o.stored = true; });
+    multi.clear(); selTable = null; multiMode = false;
+    homeTab = 'inv';
+    openPanel({ type: 'home' }, true);
+    B.toast('📦 Guardado en el inventario: ' + (ts.length ? ts.length + (ts.length > 1 ? ' mesas' : ' mesa') : '') + (ts.length && its.length ? ' y ' : '') + (its.length ? its.length + (its.length > 1 ? ' elementos' : ' elemento') : '') +
+      (people ? '. Sus ' + people + ' invitados siguen en sus sillas.' : '.'), 'ok', 4500);
+    commit();
+  }
+
+  function restoreObjs(ids) {
+    const list = ids.map(obj).filter(Boolean);
+    if (!list.length) return;
+    pushUndo();
+    // Se colocan en el centro de la pantalla conservando su acomodo entre ellos
+    const cx = list.reduce((a, o) => a + o.x, 0) / list.length, cy = list.reduce((a, o) => a + o.y, 0) / list.length;
+    const r = stage.getBoundingClientRect();
+    const c = listView || r.width < 10 ? { x: cx, y: cy } : toWorld(r.left + r.width / 2, r.top + r.height / 2);
+    list.forEach((o) => { o.stored = false; o.x = Math.round((o.x - cx + c.x) / 10) * 10; o.y = Math.round((o.y - cy + c.y) / 10) * 10; });
+    mode = 'organizar';
+    multi = new Set(list.map((o) => o.id));
+    selTable = null;
+    openPanel(list.length > 1 ? { type: 'multi' } : (item(list[0].id) ? { type: 'item', id: list[0].id } : { type: 'table', id: list[0].id }), true);
+    if (list.length === 1) { selTable = list[0].id; multi.clear(); }
+    B.toast('Listo, ya está en el plano. Arrástralo a su lugar.', 'ok', 3000);
+    commit();
+  }
+
+  async function deleteObjs(ids) {
+    const { ts, its, people } = describe(ids);
+    if (!ts.length && !its.length) return;
+    const what = [ts.length ? ts.length + (ts.length > 1 ? ' mesas' : ' mesa') : '', its.length ? its.length + (its.length > 1 ? ' elementos' : ' elemento') : ''].filter(Boolean).join(' y ');
+    const ok = await A().confirmBox('Eliminar ' + what, (people ? (people === 1 ? 'La <b>persona sentada</b> pasará' : 'Las <b>' + people + ' personas</b> sentadas pasarán') + ' a “Sin mesa”. ' : '') + 'Si prefieres conservar las mesas con su gente, usa <b>📦 Guardar en inventario</b>.', 'Eliminar', true);
+    if (!ok) return;
+    pushUndo();
+    const del = new Set(ts.concat(its).map((o) => o.id));
+    Object.keys(plan().seats).forEach((k) => { if (del.has(plan().seats[k].t)) delete plan().seats[k]; });
+    plan().tables = plan().tables.filter((t) => !del.has(t.id));
+    plan().items = items().filter((x) => !del.has(x.id));
+    multi.clear(); selTable = null;
+    openPanel({ type: 'home' }, true);
+    B.toast('Eliminado (puedes deshacer ↶)', 'ok', 2500);
+    commit();
+  }
+
+  function rotateObjs(ids, d) {
+    pushUndo();
+    ids.map(obj).filter(Boolean).forEach((o) => { o.rot = (((Math.round(((o.rot || 0) + d) / 45) * 45) % 360) + 360) % 360; });
+    commit();
   }
 
   function openAddItem() {
@@ -967,7 +1056,8 @@
       head.innerHTML = '<h4>Invitados y mesas</h4>';
       let html = '<div class="pp-tabs"><button data-tab="sin" class="' + (homeTab === 'sin' ? 'on' : '') + '">Sin mesa (' + unN + ')</button>' +
         '<button data-tab="avisos" class="' + (homeTab === 'avisos' ? 'on' : '') + '">Avisos' + (alerts.list.length ? ' (' + alerts.list.length + ')' : '') + '</button>' +
-        '<button data-tab="mesas" class="' + (homeTab === 'mesas' ? 'on' : '') + '">Mesas (' + plan().tables.length + ')</button></div>';
+        '<button data-tab="mesas" class="' + (homeTab === 'mesas' ? 'on' : '') + '">Mesas (' + plan().tables.filter((t) => !t.stored).length + ')</button>' +
+        '<button data-tab="inv" class="' + (homeTab === 'inv' ? 'on' : '') + '" title="Mesas y elementos guardados con sus invitados">📦 ' + (plan().tables.filter((t) => t.stored).length + items().filter((x) => x.stored).length) + '</button></div>';
       if (homeTab === 'sin') {
         html += '<input class="searchbox" type="search" id="ppSearch" placeholder="Buscar por nombre…" value="' + esc(sinSearch) + '">';
         html += '<div class="filters"><button data-sf="all" class="' + (sinFilter === 'all' ? 'on' : '') + '">Todos</button><button data-sf="si" class="' + (sinFilter === 'si' ? 'on' : '') + '">Confirmados</button><button data-sf="pendiente" class="' + (sinFilter === 'pendiente' ? 'on' : '') + '">Pendientes</button></div>';
@@ -979,13 +1069,43 @@
         html += alerts.list.length ? alerts.list.map((a, i) => alertHtml(a, i)).join('') : '<div class="empty-note">Sin avisos. Todo cuadra 👌</div>';
         const tight = plan().tables.filter((t) => occ[t.id].every(Boolean));
         if (tight.length) html += '<h5>Mesas llenas</h5><p class="small muted">' + tight.map((t) => esc(t.name)).join(', ') + '</p>';
+      } else if (homeTab === 'inv') {
+        const sts = plan().tables.filter((t) => t.stored), sis = items().filter((x) => x.stored);
+        html += '<p class="small muted" style="margin:2px 0 8px">Mesas y elementos guardados fuera del plano. <b>Conservan su número y a sus invitados en las mismas sillas.</b> Para guardar: en Organizar, selecciona (Shift/Ctrl + clic o “☐ Varios”) y toca 📦.</p>';
+        if (!sts.length && !sis.length) html += '<div class="empty-note">El inventario está vacío.</div>';
+        else html += '<div class="actions-col"><button class="btn btn-sm btn-primary" data-act="invall">Sacar todo al plano</button></div>';
+        html += sts.map((t) => {
+          const arr = occ[t.id] || [];
+          const names = arr.filter(Boolean).map((k) => shortName(keyName(k)));
+          return '<div class="inv-row"><div class="t"><b>' + esc(t.name) + '</b><small>' + names.length + '/' + t.seats + ' ocupadas' + (names.length ? ' · ' + esc(names.slice(0, 4).join(', ')) + (names.length > 4 ? '…' : '') : '') + '</small></div>' +
+            '<button class="btn btn-sm" data-inv-out="' + t.id + '">Sacar</button><button class="btn btn-sm btn-danger" data-inv-del="' + t.id + '" title="Eliminar">✕</button></div>';
+        }).join('');
+        html += sis.map((it) => {
+          const k = ITEM_KINDS[it.kind] || ITEM_KINDS.other;
+          return '<div class="inv-row"><div class="t"><b>' + k.icon + ' ' + esc(it.label || k.name) + '</b><small>' + fmtM(it.w || k.w) + ' × ' + fmtM(it.h || k.h) + ' m</small></div>' +
+            '<button class="btn btn-sm" data-inv-out="' + it.id + '">Sacar</button><button class="btn btn-sm btn-danger" data-inv-del="' + it.id + '" title="Eliminar">✕</button></div>';
+        }).join('');
       } else {
         html += plan().tables.length ? plan().tables.map((t) => {
           const used = occ[t.id].filter(Boolean).length;
-          return '<div class="grp" data-open="' + t.id + '"><span class="dot" style="background:var(--accent)">' + (t.shape === 'round' ? '●' : t.shape === 'rect' ? '▬' : t.shape === 'novios' ? '♥' : '★') + '</span><span class="t"><b>' + esc(t.name) + '</b><small>' + (t.seats - used) + ' libres de ' + t.seats + '</small></span><span class="n">' + used + '/' + t.seats + '</span></div>';
+          return '<div class="grp" data-open="' + t.id + '"><span class="dot" style="background:var(--accent)">' + (t.shape === 'round' ? '●' : t.shape === 'rect' ? '▬' : t.shape === 'novios' ? '♥' : '★') + '</span><span class="t"><b>' + esc(t.name) + '</b><small>' + (t.stored ? '📦 en inventario · ' : '') + (t.seats - used) + ' libres de ' + t.seats + '</small></span><span class="n">' + used + '/' + t.seats + '</span></div>';
         }).join('') : '<div class="empty-note">Aún no hay mesas.<br><button class="btn btn-primary" data-act="add" style="margin-top:8px">＋ Añadir mesas</button></div>';
       }
       body.innerHTML = html;
+    }
+
+    if (panel.type === 'multi') {
+      Array.from(multi).forEach((id) => { if (!obj(id)) multi.delete(id); });
+      if (!multi.size) { panel = { type: 'home' }; return renderPanel(); }
+      const { ts, its, people } = describe(Array.from(multi));
+      head.innerHTML = back + '<h4>' + multi.size + ' seleccionados</h4>';
+      body.innerHTML = '<p class="small muted">Arrastra cualquiera para <b>mover todos juntos</b>. Shift/Ctrl + clic (o “☐ Varios”) para agregar o quitar.</p>' +
+        '<div class="sel-list">' + ts.map((t) => '<span>🍽️ ' + esc(t.name) + '</span>').join('') + its.map((it) => { const k = ITEM_KINDS[it.kind] || ITEM_KINDS.other; return '<span>' + k.icon + ' ' + esc(it.label || k.name) + '</span>'; }).join('') + '</div>' +
+        (people ? '<p class="small">👥 ' + people + ' personas sentadas en estas mesas.</p>' : '') +
+        '<div class="actions-col"><button class="btn btn-primary" data-act="mstore">📦 Guardar en inventario' + (people ? ' (con sus invitados)' : '') + '</button>' +
+        '<button class="btn btn-sm" data-act="mrot">⟳ Girar 45° cada uno</button>' +
+        '<button class="btn btn-sm btn-danger" data-act="mdel">🗑 Eliminar</button>' +
+        '<button class="btn btn-sm" data-act="mclear">Quitar selección</button></div>';
     }
 
     if (panel.type === 'item') {
@@ -1000,7 +1120,7 @@
         '<p class="small muted" style="margin:-4px 0 8px">También puedes estirarlo o encogerlo con la esquina ⤡.</p>' +
         (it.kind !== 'area' && it.kind !== 'wall' && it.kind !== 'window' ? '<label class="chk small" style="margin-bottom:8px"><input type="checkbox" id="iTop"' + (it.top ? ' checked' : '') + '> Poner encima de las mesas (p. ej. el pastel sobre la mesa de novios)</label>' : '') +
         '<div class="actions-col" style="grid-template-columns:repeat(3,1fr)"><button class="btn btn-sm" data-act="irotl">⟲ 45°</button><button class="btn btn-sm" data-act="irot0">Enderezar</button><button class="btn btn-sm" data-act="irotr">⟳ 45°</button></div>' +
-        '<div class="actions-col"><button class="btn btn-sm" data-act="idup">Duplicar</button><button class="btn btn-sm btn-danger" data-act="idel">Eliminar</button></div>';
+        '<div class="actions-col"><button class="btn btn-sm" data-act="istore">📦 Guardar en inventario</button><button class="btn btn-sm" data-act="idup">Duplicar</button><button class="btn btn-sm btn-danger" data-act="idel">Eliminar</button></div>';
     }
 
     if (panel.type === 'table') {
@@ -1024,7 +1144,8 @@
         return '<div class="seatrow' + (k ? '' : ' empty') + (fl ? ' flagged' : '') + '" data-seatrow="' + i + '"><span class="num">' + (i + 1) + '</span>' +
           (k ? '<span style="flex:1">' + esc(keyName(k)) + (fl === 'no' ? ' · ⚠️ no viene' : fl === 'sobra' ? ' · ⚠️ ya no viene' : '') + '</span><span class="dot" style="width:12px;height:12px;border-radius:50%;background:' + colorOf(keyGuest(k)) + '"></span>' : '<span style="flex:1">Libre · tocar para sentar</span>') + '</div>';
       }).join('');
-      html += '<div class="actions-col"><button class="btn btn-sm" data-act="dup">Duplicar mesa</button><button class="btn btn-sm btn-danger" data-act="del">Eliminar mesa</button></div>';
+      html += '<div class="actions-col">' + (t.stored ? '<button class="btn btn-sm btn-primary" data-act="tout">Sacar al plano</button>' : '<button class="btn btn-sm" data-act="tstore">📦 Guardar en inventario (con sus invitados)</button>') +
+        '<button class="btn btn-sm" data-act="dup">Duplicar mesa</button><button class="btn btn-sm btn-danger" data-act="del">Eliminar mesa</button></div>';
       body.innerHTML = html;
     }
 
@@ -1082,11 +1203,19 @@
     const head = $('.pp-head', panelEl);
     const on = (sel, fn) => $$(sel, panelEl).forEach((el) => { el.onclick = (e) => fn(el, e); });
 
-    on('[data-act=home]', () => { selTable = null; openPanel({ type: 'home' }); });
+    on('[data-act=home]', () => { selTable = null; multi.clear(); openPanel({ type: 'home' }); });
     on('[data-tab]', (el) => { homeTab = el.dataset.tab; renderPanel(); });
     on('[data-sf]', (el) => { sinFilter = el.dataset.sf; renderPanel(); });
     on('[data-act=auto]', autoSeat);
     on('[data-act=add]', openAddTables);
+    on('[data-act=istore]', () => storeObjs([panel.id]));
+    on('[data-act=mstore]', () => storeObjs(Array.from(multi)));
+    on('[data-act=mdel]', () => deleteObjs(Array.from(multi)));
+    on('[data-act=mrot]', () => rotateObjs(Array.from(multi), 45));
+    on('[data-act=mclear]', () => { multi.clear(); openPanel({ type: 'home' }); });
+    on('[data-act=invall]', () => restoreObjs(plan().tables.filter((t) => t.stored).map((t) => t.id).concat(items().filter((x) => x.stored).map((x) => x.id))));
+    on('[data-inv-out]', (el) => restoreObjs([el.dataset.invOut]));
+    on('[data-inv-del]', (el) => deleteObjs([el.dataset.invDel]));
     on('[data-open]', (el) => { selTable = el.dataset.open; openPanel({ type: 'table', id: el.dataset.open }); centerOn(table(el.dataset.open)); });
 
     const search = $('#ppSearch', body);
@@ -1145,6 +1274,8 @@
       on('[data-act=rotr]', () => rotateTable(tid, 45));
       on('[data-act=rot0]', () => rotateTable(tid, 0));
       on('[data-act=dup]', () => duplicateTable(tid));
+      on('[data-act=tstore]', () => storeObjs([tid]));
+      on('[data-act=tout]', () => restoreObjs([tid]));
       on('[data-act=del]', () => deleteTable(tid));
       on('[data-seatrow]', (el) => {
         const i = +el.dataset.seatrow;
@@ -1223,12 +1354,13 @@
     const selM = $('#plSelMesa');
     selM.innerHTML = '<option value="">Mesas (' + plan().tables.length + ')…</option>' + plan().tables.map((t) => {
       const used = occ[t.id].filter(Boolean).length;
-      return '<option value="' + t.id + '">' + esc(t.name) + ' — ' + (t.seats - used) + ' libres de ' + t.seats + '</option>';
+      return '<option value="' + t.id + '">' + esc(t.name) + ' — ' + (t.seats - used) + ' libres de ' + t.seats + (t.stored ? ' · 📦' : '') + '</option>';
     }).join('');
     const un = unseatedGroups();
     const selS = $('#plSelSin');
     selS.innerHTML = '<option value="">Sin mesa (' + un.reduce((a, x) => a + x.keys.length, 0) + ')…</option>' + un.map((x) => '<option value="' + x.g.id + '">' + esc(x.g.name) + ' (' + x.keys.length + ')' + (x.g.status === 'si' ? ' ✓' : '') + '</option>').join('');
     $('#plUndo').disabled = !undoStack.length;
+    $('#plMulti').classList.toggle('on', multiMode);
     $('#plRedo').disabled = !redoStack.length;
     $('#plView').classList.toggle('on', listView);
     $('#plNames').classList.toggle('on', showNames);
@@ -1364,6 +1496,7 @@
       '<span class="sep"></span>' +
       '<button class="tbtn" id="plAdd" title="Añadir mesas">＋ Mesa</button>' +
       '<button class="tbtn" id="plAddItem" title="Áreas, paredes, ventanas, entrada, baños, sonido, meseros, chimenea…">＋ Elemento</button>' +
+      '<button class="tbtn" id="plMulti" title="Seleccionar varias mesas o elementos (en computadora también con Shift o Ctrl + clic)">☐ Varios</button>' +
       '<button class="tbtn" id="plUndo" title="Deshacer (Ctrl+Z)">↶</button>' +
       '<button class="tbtn" id="plRedo" title="Rehacer (Ctrl+Y)">↷</button>' +
       '<span class="sep"></span>' +
@@ -1391,6 +1524,11 @@
     $$('.mode-switch button', root).forEach((b) => { b.onclick = () => setMode(b.dataset.mode); });
     $('#plAdd').onclick = openAddTables;
     $('#plAddItem').onclick = openAddItem;
+    $('#plMulti').onclick = () => {
+      multiMode = !multiMode;
+      if (multiMode) { mode = 'organizar'; if (selTable && obj(selTable)) { multi.add(selTable); selTable = null; } B.toast('Toca las mesas o elementos que quieras seleccionar', 'info', 2500); }
+      openPanel(multi.size ? { type: 'multi' } : { type: 'home' });
+    };
     $('#plUndo').onclick = undo;
     $('#plRedo').onclick = redo;
     $('#plZin').onclick = () => { const r = svg.getBoundingClientRect(); zoomAt(r.left + r.width / 2, r.top + r.height / 2, 1.25); };
@@ -1440,8 +1578,9 @@
       if (/input|textarea|select/i.test((e.target.tagName || ''))) return;
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
       else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
-      else if (e.key === 'Escape') { if (root.classList.contains('pseudo-fs')) { root.classList.remove('pseudo-fs'); fit(); } else clearSelection(); }
-      else if ((e.key === 'Delete' || e.key === 'Backspace') && mode === 'organizar' && selTable) deleteTable(selTable);
+      else if (e.key === 'Escape') { if (root.classList.contains('pseudo-fs')) { root.classList.remove('pseudo-fs'); fit(); } else { if (multi.size) { multi.clear(); openPanel({ type: 'home' }); } clearSelection(); } }
+      else if ((e.key === 'Delete' || e.key === 'Backspace') && mode === 'organizar' && multi.size) deleteObjs(Array.from(multi));
+      else if ((e.key === 'Delete' || e.key === 'Backspace') && mode === 'organizar' && selTable) deleteObjs([selTable]);
     });
     // Mientras no muevas el plano a mano, se ajusta solo al tamaño de la pantalla
     if (window.ResizeObserver) new ResizeObserver(() => { if (visible && !fittedOnce) fit(); }).observe(stage);
