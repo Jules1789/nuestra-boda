@@ -104,7 +104,7 @@
 
     // Recomendaciones para ese día: foto, título, descripción y ubicación
     const recs = B.parseItems(cfg.recommendations).filter((r) => r.title || r.text || r.image);
-    showIf('#recsBox', recs.length);
+    showIf('#recomendaciones', recs.length);
     $('#recs').innerHTML = recs.map((r) => {
       const img = r.image ? '<img loading="lazy" src="' + esc(r.image) + '" alt="' + esc(r.title || '') + '">' : '';
       return '<article class="rec">' + (img ? (r.url ? '<a class="rec-img" target="_blank" rel="noopener" href="' + esc(r.url) + '">' + img + '</a>' : '<div class="rec-img">' + img + '</div>') : '') +
