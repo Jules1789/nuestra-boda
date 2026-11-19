@@ -92,7 +92,36 @@
     $('#placeCards').innerHTML = places.map((p) => '<article class="card"><div class="ico">' + p.icon + '</div><h3>' + esc(p.title) + '</h3>' +
       (p.time ? '<p class="time">' + esc(p.time) + '</p>' : '') + '<p>' + esc(p.name || '') + '</p><p class="muted">' + esc(p.address || '') + '</p>' +
       '<a class="btn btn-ghost btn-sm" target="_blank" rel="noopener" href="' + esc(B.mapsLink(p)) + '">📍 Cómo llegar</a></article>').join('');
-    setText('#dDress', cfg.dressCode); showIf('#cardDress', cfg.dressCode);
+    // Código de vestimenta con fotos de ejemplo (clic = verla en grande)
+    const dress = B.parseItems(cfg.dressExamples);
+    setText('#dDress', cfg.dressCode);
+    showIf('#cardDress', cfg.dressCode || dress.length);
+    $('#dressExamples').innerHTML = dress.map((d, i) => '<figure class="ex">' +
+      (d.image ? '<button type="button" class="ex-img" data-ex="' + i + '"><img loading="lazy" src="' + esc(d.image) + '" alt="' + esc(d.title || 'Ejemplo') + '"></button>' : '') +
+      (d.title ? '<figcaption><b>' + esc(d.title) + '</b>' + (d.text ? '<span>' + esc(d.text) + '</span>' : '') + '</figcaption>' : (d.text ? '<figcaption><span>' + esc(d.text) + '</span></figcaption>' : '')) + '</figure>').join('');
+    const dressImgs = dress.filter((d) => d.image).map((d) => d.image);
+    $$('[data-ex]', $('#dressExamples')).forEach((b) => { b.onclick = () => openLightbox(dressImgs, dressImgs.indexOf(dress[+b.dataset.ex].image)); });
+
+    // Recomendaciones para ese día: foto, título, descripción y ubicación
+    const recs = B.parseItems(cfg.recommendations).filter((r) => r.title || r.text || r.image);
+    showIf('#recsBox', recs.length);
+    $('#recs').innerHTML = recs.map((r) => {
+      const img = r.image ? '<img loading="lazy" src="' + esc(r.image) + '" alt="' + esc(r.title || '') + '">' : '';
+      return '<article class="rec">' + (img ? (r.url ? '<a class="rec-img" target="_blank" rel="noopener" href="' + esc(r.url) + '">' + img + '</a>' : '<div class="rec-img">' + img + '</div>') : '') +
+        '<div class="rec-body">' + (r.title ? '<h4>' + esc(r.title) + '</h4>' : '') + (r.text ? '<p class="pre">' + esc(r.text) + '</p>' : '') +
+        (r.url ? '<a class="btn btn-ghost btn-sm" target="_blank" rel="noopener" href="' + esc(r.url) + '">📍 Ver ubicación</a>' : '') + '</div></article>';
+    }).join('');
+
+    // Preguntas frecuentes con buscador
+    const faq = B.parseItems(cfg.faq).filter((f) => f.q && f.a);
+    showIf('#faq', faq.length);
+    $('#faqList').innerHTML = faq.map((f) => '<details class="faq-item"><summary>' + esc(f.q) + '</summary><p class="pre">' + esc(f.a) + '</p></details>').join('');
+    $('#faqSearch').oninput = () => {
+      const q = B.norm($('#faqSearch').value);
+      let shown = 0;
+      $$('.faq-item').forEach((d) => { const ok = !q || B.norm(d.textContent).includes(q); d.hidden = !ok; if (ok) shown++; if (q && ok) d.open = true; });
+      $('#faqEmpty').hidden = shown > 0;
+    };
     setText('#dLodging', cfg.lodging); showIf('#cardLodging', cfg.lodging);
     setText('#dInstr', cfg.instructions); showIf('#cardInstr', cfg.instructions);
     // Mesa de regalos: foto y nombre de la tienda llevan directo a la mesa (el enlace no se muestra como texto)
@@ -182,25 +211,31 @@
     setupReveal();
   }
 
-  /* -------- Fotos en grande -------- */
+  /* -------- Fotos en grande (galería, vestimenta…) -------- */
+  let lbList = [], lbIdx = 0, lbReady = false;
+  function lbShow(i) { if (!lbList.length) return; lbIdx = (i + lbList.length) % lbList.length; $('#lbImg').src = lbList[lbIdx]; $('#lightbox').hidden = false; }
+  function openLightbox(list, i) { initLightbox(); lbList = list; lbShow(Math.max(0, i)); }
   function setupLightbox(photos) {
+    $$('#gallery button').forEach((b) => { b.onclick = () => openLightbox(photos, +b.dataset.i); });
+    initLightbox();
+  }
+  function initLightbox() {
+    if (lbReady) return;
+    lbReady = true;
     const lb = $('#lightbox');
-    let idx = 0;
-    const show = (i) => { idx = (i + photos.length) % photos.length; $('#lbImg').src = photos[idx]; lb.hidden = false; };
-    $$('#gallery button').forEach((b) => { b.onclick = () => show(+b.dataset.i); });
     $('#lbClose').onclick = () => { lb.hidden = true; };
-    $('#lbPrev').onclick = (e) => { e.stopPropagation(); show(idx - 1); };
-    $('#lbNext').onclick = (e) => { e.stopPropagation(); show(idx + 1); };
+    $('#lbPrev').onclick = (e) => { e.stopPropagation(); lbShow(lbIdx - 1); };
+    $('#lbNext').onclick = (e) => { e.stopPropagation(); lbShow(lbIdx + 1); };
     lb.onclick = (e) => { if (e.target === lb) lb.hidden = true; };
     document.addEventListener('keydown', (e) => {
       if (lb.hidden) return;
       if (e.key === 'Escape') lb.hidden = true;
-      if (e.key === 'ArrowLeft') show(idx - 1);
-      if (e.key === 'ArrowRight') show(idx + 1);
+      if (e.key === 'ArrowLeft') lbShow(lbIdx - 1);
+      if (e.key === 'ArrowRight') lbShow(lbIdx + 1);
     });
     let x0 = null;
     lb.addEventListener('touchstart', (e) => { x0 = e.touches[0].clientX; }, { passive: true });
-    lb.addEventListener('touchend', (e) => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 40) show(idx + (dx < 0 ? 1 : -1)); x0 = null; });
+    lb.addEventListener('touchend', (e) => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 40) lbShow(lbIdx + (dx < 0 ? 1 : -1)); x0 = null; });
   }
 
   /* -------- Paisaje: pinos que crecen en la portada -------- */

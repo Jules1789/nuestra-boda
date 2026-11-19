@@ -22,6 +22,9 @@
     message: 'Con mucha alegría queremos invitarte a celebrar el día en que uniremos nuestras vidas. Tu presencia es nuestro mejor regalo.',
     itinerary: '',
     dressCode: '',
+    dressExamples: '',
+    recommendations: '',
+    faq: '',
     lodging: '',
     instructions: '',
     gifts: '',
@@ -88,7 +91,10 @@
     ['Evento', 'venueGeo', 'Fiesta: coordenadas para el mapa (opcional)', 'text', 'Formato: latitud,longitud. Pon el pin exacto en el mapa de la web y en Waze.'],
     ['Evento', 'itinerary', 'Programa del día (una línea por momento: HORA | QUÉ)', 'textarea'],
     ['Evento', 'rsvpDeadline', 'Confirmar antes de', 'date'],
-    ['Detalles', 'dressCode', 'Código de vestimenta', 'textarea'],
+    ['Código de vestimenta', 'dressCode', 'Indicaciones de vestimenta', 'textarea'],
+    ['Código de vestimenta', 'dressExamples', 'Fotos de ejemplo', 'list', 'Agrega fotos de ejemplo con un título y una descripción (p. ej. “Ellas: vestido largo y abrigo ligero”).'],
+    ['Recomendaciones para el día', 'recommendations', 'Recomendaciones', 'list', 'Aparecen en “El gran día”: lugares cercanos (un restaurante, una cafetería), qué llevar, consejos… Cada una con foto, descripción y ubicación opcional.'],
+    ['Preguntas frecuentes', 'faq', 'Preguntas y respuestas', 'list', 'Transporte, hotel, menú, sesión de fotos, horarios… Tus invitados las pueden buscar en la página.'],
     ['Detalles', 'lodging', 'Alojamiento', 'textarea'],
     ['Detalles', 'instructions', 'Indicaciones para el día', 'textarea'],
     ['Mesa de regalos', 'giftsImage', 'Foto de la mesa de regalos', 'image', 'Al tocar la foto, tus invitados van directo a la mesa de regalos.'],
@@ -363,6 +369,12 @@
     return d;
   }
 
+  // Listas editables guardadas como JSON en la configuración (fotos de vestimenta, recomendaciones, preguntas)
+  function parseItems(v) {
+    if (Array.isArray(v)) return v;
+    try { const a = JSON.parse(String(v || '[]')); return Array.isArray(a) ? a.filter((x) => x && typeof x === 'object') : []; } catch (e) { return []; }
+  }
+
   // Mesa de regalos: enlace, tienda y mensaje (acepta también el formato viejo: el enlace pegado en el mensaje)
   const STORES = [[/liverpool/i, 'Liverpool'], [/palaciodehierro|palacio/i, 'El Palacio de Hierro'], [/amazon/i, 'Amazon'], [/sears/i, 'Sears'], [/suburbia/i, 'Suburbia'], [/costco/i, 'Costco'], [/walmart/i, 'Walmart']];
   function giftsInfo(cfg) {
@@ -590,7 +602,7 @@
     googleCalUrl, outlookUrl, icsText, icsDataUrl,
     mapsLink, wazeLink, appleMapsLink, mapEmbed, mapQuery, places, fmtHour,
     ytEmbed, ytMusicLink, ytPlaylistId, ytVideoId,
-    focusPosition, giftsInfo, shareLinks, waPhone, siteBaseUrl, guestLink, fillTemplate, copyText, applyTheme, toast,
+    focusPosition, giftsInfo, parseItems, shareLinks, waPhone, siteBaseUrl, guestLink, fillTemplate, copyText, applyTheme, toast,
     api, isDemo, demoReset, DEMO_KEY,
     withDefaults: (cfg) => Object.assign({}, DEFAULT_CONFIG, Object.fromEntries(Object.entries(cfg || {}).filter(([k, v]) => v != null && (v !== '' || !['name1', 'name2', 'date', 'timezone', 'theme', 'inviteTemplate'].includes(k)))))
   };

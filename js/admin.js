@@ -726,6 +726,11 @@
           '<small>' + esc(pl.name) + '</small></button>').join('') + '</div>' + (help ? '<small>' + esc(help) + '</small>' : '') + '</div>';
         return;
       }
+      if (type === 'list') {
+        s.html += '<div class="frow"><span>' + esc(label) + '</span><input type="hidden" name="' + key + '" value="' + esc(v) + '">' +
+          '<div class="list-field" data-list="' + key + '"></div>' + (help ? '<small>' + esc(help) + '</small>' : '') + '</div>';
+        return;
+      }
       if (type === 'image' || type === 'gallery') {
         s.html += '<div class="frow"><span>' + esc(label) + '</span><input type="hidden" name="' + key + '" value="' + esc(v) + '">' +
           '<div class="photo-field" data-photo="' + key + '" data-multi="' + (type === 'gallery' ? '1' : '') + '"></div>' + (help ? '<small>' + esc(help) + '</small>' : '') + '</div>';
@@ -740,6 +745,7 @@
       '<div class="save-bar"><button class="btn btn-primary" type="submit">Guardar cambios</button></div>';
     form.dataset.ready = '1';
     $$('[data-photo]', form).forEach(renderPhotoField);
+    $$('[data-list]', form).forEach(renderListField);
     // Paletas: llenan los colores para que los veas; se guardan con "Guardar cambios"
     const COLOR_KEYS = ['theme', 'colorBg', 'colorCard', 'colorText', 'colorNature'];
     const previewColors = () => { const o = {}; COLOR_KEYS.forEach((k) => { if (form.elements[k]) o[k] = form.elements[k].value; }); B.applyTheme(o); };
@@ -859,6 +865,61 @@
       placePreviews(val);
       try { await savePhotoConfig('heroFocus', val); B.toast('Enfoque guardado ✓ Ya se ve así en la web', 'ok', 2200); } catch (err) { B.toast('No se pudo guardar el enfoque', 'error'); }
     };
+  }
+
+  /* ---- Listas editables: fotos de vestimenta, recomendaciones y preguntas frecuentes ---- */
+  const LIST_SCHEMAS = {
+    dressExamples: { add: '＋ Agregar ejemplo', item: 'Ejemplo', fields: [['image', 'Foto', 'image'], ['title', 'Título', 'text', 'Ej. Ellas'], ['text', 'Descripción', 'textarea', 'Ej. Vestido largo en tonos tierra y un abrigo ligero']] },
+    recommendations: { add: '＋ Agregar recomendación', item: 'Recomendación', fields: [['image', 'Foto', 'image'], ['title', 'Título', 'text', 'Ej. Restaurante La Cabaña'], ['text', 'Descripción', 'textarea', 'Ej. A 5 minutos del salón; buen lugar para desayunar el domingo'], ['url', 'Ubicación (enlace de Google Maps, opcional)', 'url', 'https://maps.app.goo.gl/…']] },
+    faq: { add: '＋ Agregar pregunta', item: 'Pregunta', fields: [['q', 'Pregunta', 'text', 'Ej. ¿Hay transporte de la iglesia al salón?'], ['a', 'Respuesta', 'textarea', 'Ej. Sí, saldrá un camión a las 18:15 desde la iglesia.']] }
+  };
+
+  function renderListField(box) {
+    const key = box.dataset.list;
+    const schema = LIST_SCHEMAS[key];
+    const hidden = $('input[name="' + key + '"]', box.parentNode);
+    let items = B.parseItems(hidden.value);
+    const sync = () => { hidden.value = items.length ? JSON.stringify(items) : ''; };
+    const draw = () => {
+      box.innerHTML = items.map((it, i) => '<div class="li-item"><div class="li-head"><b>' + esc(schema.item) + ' ' + (i + 1) + '</b>' +
+        '<span><button type="button" class="btn btn-sm" data-up="' + i + '" title="Subir"' + (i ? '' : ' disabled') + '>↑</button>' +
+        '<button type="button" class="btn btn-sm btn-danger" data-rm="' + i + '" title="Quitar">✕</button></span></div>' +
+        schema.fields.map(([f, label, type, ph]) => {
+          const val = it[f] || '';
+          if (type === 'image') {
+            return '<div class="li-img">' + (val ? '<img src="' + esc(val) + '" alt="">' : '<div class="li-noimg">Sin foto</div>') +
+              '<label class="btn btn-sm">' + (val ? 'Cambiar foto' : 'Subir foto') + '<input type="file" accept="image/*" hidden data-img="' + i + '"></label>' +
+              (val ? '<button type="button" class="btn btn-sm" data-noimg="' + i + '">Quitar foto</button>' : '') + '</div>';
+          }
+          const ctrl = type === 'textarea'
+            ? '<textarea rows="2" data-f="' + f + '" data-i="' + i + '" placeholder="' + esc(ph || '') + '">' + esc(val) + '</textarea>'
+            : '<input type="' + (type === 'url' ? 'url' : 'text') + '" data-f="' + f + '" data-i="' + i + '" value="' + esc(val) + '" placeholder="' + esc(ph || '') + '">';
+          return '<label class="li-f"><span>' + esc(label) + '</span>' + ctrl + '</label>';
+        }).join('') + '</div>').join('') +
+        '<button type="button" class="btn" data-add>' + esc(schema.add) + '</button>';
+      $$('[data-f]', box).forEach((el) => { el.oninput = () => { items[+el.dataset.i][el.dataset.f] = el.value; sync(); }; });
+      $('[data-add]', box).onclick = () => { items.push({}); sync(); draw(); const last = $$('.li-item', box).slice(-1)[0]; if (last) { const f = $('input[type=text], textarea', last); if (f) f.focus(); } };
+      $$('[data-rm]', box).forEach((b) => { b.onclick = () => { items.splice(+b.dataset.rm, 1); sync(); draw(); B.toast('Quitado. Pulsa <b>Guardar cambios</b>.', 'info', 2000); }; });
+      $$('[data-up]', box).forEach((b) => { b.onclick = () => { const i = +b.dataset.up; [items[i - 1], items[i]] = [items[i], items[i - 1]]; sync(); draw(); }; });
+      $$('[data-noimg]', box).forEach((b) => { b.onclick = () => { items[+b.dataset.noimg].image = ''; sync(); draw(); }; });
+      $$('[data-img]', box).forEach((inp) => {
+        inp.onchange = async () => {
+          const file = inp.files && inp.files[0];
+          if (!file) return;
+          box.classList.add('busy');
+          B.toast('Subiendo foto…', 'info', 2000);
+          try {
+            items[+inp.dataset.img].image = await uploadPhoto(file, false);
+            sync();
+            await savePhotoConfig(key, hidden.value); // la foto queda guardada de inmediato
+            B.toast('Foto lista ✓', 'ok', 1800);
+          } catch (e) { B.toast('No se pudo subir: ' + esc(e.message), 'error', 5000); }
+          box.classList.remove('busy');
+          draw();
+        };
+      });
+    };
+    draw();
   }
 
   function renderPhotoField(box) {

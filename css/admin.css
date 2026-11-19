@@ -323,3 +323,14 @@ code { background: var(--bg); padding: 1px 6px; border-radius: 6px; font-size: .
 .pal i { height: 22px; border-radius: 5px; border: 1px solid rgba(0, 0, 0, .08); }
 .pal small { grid-column: 1 / -1; font-size: .78rem; margin-top: 4px; }
 .pal.on { border-color: var(--ink); box-shadow: 0 0 0 2px var(--ink) inset; }
+
+/* Listas editables (vestimenta, recomendaciones, preguntas) */
+.list-field { display: grid; gap: 10px; }
+.list-field.busy { opacity: .5; pointer-events: none; }
+.li-item { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: #fff; display: grid; gap: 8px; }
+.li-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.li-head span { display: flex; gap: 6px; }
+.li-f > span { display: block; font-size: .82rem; font-weight: 500; margin-bottom: 3px; }
+.li-img { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.li-img img { width: 84px; height: 84px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); }
+.li-noimg { width: 84px; height: 84px; border-radius: 10px; border: 1px dashed var(--line); display: grid; place-items: center; font-size: .75rem; color: var(--muted); }
