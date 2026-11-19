@@ -9,6 +9,11 @@
   const guests = () => st().guests;
 
   const SEAT_R = 13;
+  // Escala del plano: 60 unidades = 1 metro (una mesa redonda de 10 mide ~1.9 m)
+  const PX_PER_M = 60;
+  const m2px = (m) => Math.round((+m || 0) * PX_PER_M);
+  const px2m = (px) => Math.round(((+px || 0) / PX_PER_M) * 10) / 10;
+  const fmtM = (px) => px2m(px).toLocaleString('es-MX', { maximumFractionDigits: 1 });
   const SNAP_DEG = 8;
   const PREF_KEY = 'boda_plano_prefs';
 
@@ -48,7 +53,7 @@
     fireplace: { name: 'Chimenea', icon: '🔥', w: 120, h: 60, desc: 'Chimenea del lugar' },
     dance: { name: 'Pista de baile', icon: '💃', w: 260, h: 200, desc: 'Zona de baile' },
     bar: { name: 'Barra', icon: '🍸', w: 160, h: 60, desc: 'Barra de bebidas' },
-    cake: { name: 'Pastel', icon: '🎂', w: 80, h: 80, desc: 'Mesa del pastel' },
+    cake: { name: 'Pastel', icon: '🎂', w: 30, h: 30, desc: 'Pastel (puede ir encima de una mesa)' },
     other: { name: 'Otro', icon: '📌', w: 100, h: 70, desc: 'Cualquier otra cosa' }
   };
   const itemExt = (it) => Math.hypot((it.w || 100) / 2, (it.h || 60) / 2);
@@ -153,6 +158,24 @@
   function geom(t) {
     const n = Math.max(1, t.seats | 0);
     const sp = 34;
+    // Medida elegida a mano (metros): dw = diámetro o largo, dh = ancho
+    const cw = +t.dw > 0 ? m2px(t.dw) : 0, ch = +t.dh > 0 ? m2px(t.dh) : 0;
+    const spread = (cnt, w, i) => -w / 2 + (i + 0.5) * w / cnt;
+    if (cw && t.shape !== 'round') {
+      const w = cw;
+      if (t.shape === 'rect') {
+        const h = ch || 66;
+        const top = Math.ceil(n / 2), bot = n - top;
+        const seats = [];
+        for (let i = 0; i < top; i++) seats.push({ x: spread(top, w, i), y: -h / 2 - 19, ox: 0, oy: -1 });
+        for (let j = bot - 1; j >= 0; j--) seats.push({ x: spread(bot, w, j), y: h / 2 + 19, ox: 0, oy: 1 });
+        return { kind: 'rect', w, h, seats, ext: Math.hypot(w / 2, h / 2 + 32) };
+      }
+      const h = ch || (t.shape === 'novios' ? 36 : 48);
+      const seats = [];
+      for (let i = 0; i < n; i++) seats.push({ x: spread(n, w, i), y: -h / 2 - 18, ox: 0, oy: -1 });
+      return { kind: t.shape === 'novios' ? 'novios' : 'presidential', w, h, seats, ext: Math.hypot(w / 2, h / 2 + 32) };
+    }
     if (t.shape === 'rect') {
       const top = Math.ceil(n / 2), bot = n - top;
       const w = Math.max(top, 1) * sp + 18, h = 66;
@@ -174,7 +197,7 @@
       for (let i = 0; i < n; i++) seats.push({ x: -(n - 1) * sp / 2 + i * sp, y: -h / 2 - 19, ox: 0, oy: -1 });
       return { kind: 'presidential', w, h, seats, ext: Math.hypot(w / 2, h / 2 + 32) };
     }
-    const r = Math.max(30, n * 5.6);
+    const r = cw ? Math.max(15, cw / 2) : Math.max(30, n * 5.6);
     const R = r + 20;
     const seats = [];
     for (let i = 0; i < n; i++) {
@@ -251,9 +274,11 @@
   }
 
   function itemsMarkup(opts = {}) {
-    // Primero las áreas (al fondo), luego paredes/ventanas y al final lo demás
+    // Primero las áreas (al fondo), luego paredes/ventanas y al final lo demás.
+    // opts.layer: 'below' (debajo de las mesas) o 'above' (encima, p. ej. el pastel en la mesa de novios)
     const order = { area: 0, dance: 1, wall: 2, window: 2 };
-    return items().slice().sort((a, b) => (order[a.kind] ?? 3) - (order[b.kind] ?? 3)).map((it) => {
+    const pick = items().filter((it) => !opts.layer || (opts.layer === 'above') === !!it.top);
+    return pick.slice().sort((a, b) => (order[a.kind] ?? 3) - (order[b.kind] ?? 3)).map((it) => {
       const k = ITEM_KINDS[it.kind] || ITEM_KINDS.other;
       const w = it.w || k.w, h = it.h || k.h, rot = it.rot || 0;
       const label = it.label != null && it.label !== '' ? it.label : k.name;
@@ -261,7 +286,7 @@
       let body = '';
       if (it.kind === 'area') {
         body = '<rect class="i-area" x="' + (-w / 2) + '" y="' + (-h / 2) + '" width="' + w + '" height="' + h + '" rx="6"/>' +
-          '<g transform="rotate(' + (-rot) + ')"><text class="i-area-lbl" y="' + (-h / 2 + 18) + '">' + esc(label) + '</text></g>';
+          '<g transform="rotate(' + (-rot) + ')"><text class="i-area-lbl" y="' + (-h / 2 + 18) + '">' + esc(label) + ' · ' + fmtM(w) + ' × ' + fmtM(h) + ' m</text></g>';
       } else if (it.kind === 'wall') {
         body = '<rect class="i-wall" x="' + (-w / 2) + '" y="' + (-h / 2) + '" width="' + w + '" height="' + h + '"/>';
       } else if (it.kind === 'window') {
@@ -280,7 +305,11 @@
       let handle = '';
       if (!opts.export && mode === 'organizar' && selTable === it.id) {
         const hy = -(h / 2 + 30);
-        handle = '<g class="handle" data-handle="' + it.id + '"><line x1="0" y1="' + (-h / 2) + '" x2="0" y2="' + hy + '"/><circle cx="0" cy="' + hy + '" r="13"/><text x="0" y="' + hy + '" transform="rotate(' + (-rot) + ' 0 ' + hy + ')">↻</text></g>';
+        const thin = it.kind === 'wall' || it.kind === 'window';
+        const rx = w / 2, ry = thin ? 0 : h / 2;
+        handle = '<g class="handle" data-handle="' + it.id + '"><line x1="0" y1="' + (-h / 2) + '" x2="0" y2="' + hy + '"/><circle cx="0" cy="' + hy + '" r="13"/><text x="0" y="' + hy + '" transform="rotate(' + (-rot) + ' 0 ' + hy + ')">↻</text></g>' +
+          // Esquina para estirar o encoger
+          '<g class="resizer" data-resize="' + it.id + '"><rect x="' + (rx - 10) + '" y="' + (ry - 10) + '" width="20" height="20" rx="5"/><text x="' + rx + '" y="' + ry + '" transform="rotate(' + (-rot) + ' ' + rx + ' ' + ry + ')">⤡</text></g>';
       }
       return '<g class="itm' + sel + '" data-item="' + it.id + '" data-obj="' + it.id + '" transform="translate(' + it.x + ' ' + it.y + ') rotate(' + rot + ')"><title>' + esc(label) + '</title>' + body + handle + '</g>';
     }).join('');
@@ -296,7 +325,7 @@
 
   function render() {
     if (!mounted) return;
-    world.innerHTML = itemsMarkup() + tablesMarkup();
+    world.innerHTML = itemsMarkup({ layer: 'below' }) + tablesMarkup() + itemsMarkup({ layer: 'above' });
     applyView();
     stage.classList.toggle('organize', mode === 'organizar');
   }
@@ -347,6 +376,8 @@
   let gest = null;
 
   function hitTest(el) {
+    const rz = el.closest && el.closest('[data-resize]');
+    if (rz) return { kind: 'resize', tid: rz.getAttribute('data-resize') };
     const h = el.closest && el.closest('[data-handle]');
     if (h) return { kind: 'handle', tid: h.getAttribute('data-handle') };
     const s = el.closest && el.closest('[data-seat]');
@@ -371,7 +402,8 @@
         gest = { type: 'pan', start: { x: e.clientX, y: e.clientY }, moved: false, hit, tx: view.tx, ty: view.ty };
         if (mode === 'organizar' && hit.tid) {
           const t = obj(hit.tid);
-          if (hit.kind === 'handle') { gest.type = 'rotate'; gest.tid = t.id; gest.snap = snapshot(); }
+          if (hit.kind === 'resize') { gest.type = 'resize'; gest.tid = t.id; gest.snap = snapshot(); }
+          else if (hit.kind === 'handle') { gest.type = 'rotate'; gest.tid = t.id; gest.snap = snapshot(); }
           else { const w = toWorld(e.clientX, e.clientY); gest.type = 'drag'; gest.tid = t.id; gest.off = { x: w.x - t.x, y: w.y - t.y }; gest.snap = snapshot(); }
         }
         svg.classList.add('grabbing');
@@ -414,6 +446,19 @@
           render(); hint('Giro: ' + t.rot + '°' + (t.rot % 45 === 0 ? ' (encajada)' : ''));
           break;
         }
+        case 'resize': {
+          // Estira o encoge desde el centro, en pasos de 10 cm
+          const it = item(gest.tid); if (!it) break;
+          const w = toWorld(p.x, p.y);
+          const a = (it.rot || 0) * Math.PI / 180;
+          const dx = w.x - it.x, dy = w.y - it.y;
+          const lx = dx * Math.cos(a) + dy * Math.sin(a), ly = -dx * Math.sin(a) + dy * Math.cos(a);
+          const step = PX_PER_M / 10;
+          it.w = Math.max(step * 2, Math.round((2 * Math.abs(lx)) / step) * step);
+          if (!(it.kind === 'wall' || it.kind === 'window')) it.h = Math.max(step * 2, Math.round((2 * Math.abs(ly)) / step) * step);
+          render(); hint('Tamaño: ' + fmtM(it.w) + (it.kind === 'wall' || it.kind === 'window' ? ' m de largo' : ' × ' + fmtM(it.h) + ' m'));
+          break;
+        }
         case 'rotate2': {
           if (ptrs.size < 2) break;
           const [a, b] = Array.from(ptrs.values());
@@ -445,7 +490,8 @@
         svg.classList.remove('grabbing');
         const g = gest; gest = null;
         if (!g.moved && e.type === 'pointerup' && g.hit) onTap(g.hit);
-        else if (g.moved && g.snap && ['drag', 'rotate', 'rotate2'].includes(g.type)) {
+        else if (g.moved && g.snap && ['drag', 'rotate', 'rotate2', 'resize'].includes(g.type)) {
+          if (g.type === 'resize' && panel.type === 'item') renderPanel();
           if (g.snap !== snapshot()) { pushUndo(g.snap); commit(); }
           hint();
         }
@@ -653,7 +699,7 @@
       '<label><span>Nombre</span><input id="tName" value="Mesa"></label>' +
       '<label><span>¿Cuántas mesas iguales?</span>' + stepper('tQty', 1, 1, 40) + '</label>' +
       '<label><span>Plazas por mesa</span>' + stepper('tSeats', 10, 1, 40) + '</label>' +
-      '</div><p class="muted small" id="tPrev"></p>' +
+      '</div><div class="frow" style="margin-top:8px"><span>Tamaño (opcional)</span>' + sizeFields('round', null) + '</div><p class="muted small" id="tPrev"></p>' +
       '<div class="modal-actions"><button class="btn" id="tCancel">Cancelar</button><button class="btn btn-primary" id="tOk">Añadir</button></div>',
       (m) => {
         let seatsTouched = false;
@@ -679,12 +725,14 @@
         $('#tQty', m).addEventListener('input', prev);
         $('#tName', m).addEventListener('input', prev);
         wireSteppers(m, () => { seatsTouched = true; prev(); });
+        wireSizeFields(m);
         prev();
         $('#tCancel', m).onclick = A().closeModal;
         $('#tOk', m).onclick = () => {
           const { shape, s, names } = prev();
+          const size = readSize(m);
           A().closeModal();
-          addTables(names, shape, s);
+          addTables(names, shape, s, size);
         };
       });
   }
@@ -700,7 +748,7 @@
           const r = stage.getBoundingClientRect();
           const c = toWorld(r.left + r.width / 2, r.top + r.height / 2);
           pushUndo();
-          const it = { id: 'e' + B.newId(), kind, x: Math.round(c.x / 10) * 10, y: Math.round(c.y / 10) * 10, rot: 0, w: k.w, h: k.h, label: '' };
+          const it = { id: 'e' + B.newId(), kind, x: Math.round(c.x / 10) * 10, y: Math.round(c.y / 10) * 10, rot: 0, w: k.w, h: k.h, label: '', top: kind === 'cake' };
           items().push(it);
           mode = 'organizar';
           selTable = it.id;
@@ -712,10 +760,10 @@
     });
   }
 
-  function addTables(names, shape, seats) {
+  function addTables(names, shape, seats, size) {
     pushUndo();
     const b = plan().tables.length ? bbox(plan().tables) : { x: -200, y: -150, w: 400, h: 0 };
-    const tmp = { shape, seats };
+    const tmp = Object.assign({ shape, seats }, size && size.dw ? { dw: size.dw } : {}, size && size.dh && shape !== 'round' ? { dh: size.dh } : {});
     const cell = geom(tmp).ext * 2 + 50;
     const cols = Math.max(1, Math.min(names.length, Math.ceil(Math.sqrt(names.length * 1.6))));
     const totalW = cols * cell;
@@ -723,7 +771,7 @@
     const x0 = (plan().tables.length ? b.x + b.w / 2 : 0) - totalW / 2 + cell / 2;
     const created = [];
     names.forEach((name, i) => {
-      const t = { id: 't' + B.newId(), name, shape, seats, x: Math.round((x0 + (i % cols) * cell) / 10) * 10, y: Math.round((y0 + Math.floor(i / cols) * cell) / 10) * 10, rot: 0 };
+      const t = { id: 't' + B.newId(), name, shape, seats, dw: tmp.dw, dh: tmp.dh, x: Math.round((x0 + (i % cols) * cell) / 10) * 10, y: Math.round((y0 + Math.floor(i / cols) * cell) / 10) * 10, rot: 0 };
       plan().tables.push(t); created.push(t);
     });
     B.toast('✓ ' + (created.length > 1 ? created.length + ' mesas añadidas' : esc(created[0].name) + ' añadida') + '. Usa <b>Organizar</b> para moverlas.', 'ok', 3500);
@@ -739,6 +787,7 @@
       '<label class="frow"><span>Nombre</span><input id="tName" value="' + esc(t.name) + '"></label>' +
       '<label class="frow"><span>Forma</span>' + shapePicker(t.shape) + '</label>' +
       '<label class="frow"><span>Número de plazas</span>' + stepper('tSeats', t.seats, 1, 40) + '</label>' +
+      '<div class="frow"><span>Tamaño</span>' + sizeFields(t.shape, t) + '</div>' +
       '<div id="tWarn"></div>' +
       '<div class="modal-actions"><button class="btn btn-danger" id="tDel">Eliminar</button><span class="spacer"></span><button class="btn" id="tCancel">Cancelar</button><button class="btn btn-primary" id="tOk">Guardar</button></div>',
       (m) => {
@@ -749,6 +798,7 @@
         };
         $('#tSeats', m).addEventListener('input', warn);
         wireSteppers(m, warn);
+        wireSizeFields(m);
         warn();
         $('#tCancel', m).onclick = A().closeModal;
         $('#tDel', m).onclick = () => { A().closeModal(); deleteTable(tid); };
@@ -756,13 +806,40 @@
           const name = $('#tName', m).value.trim() || t.name;
           const shape = $('input[name=tShape]:checked', m).value;
           const n = Math.max(1, Math.min(40, +$('#tSeats', m).value || 1));
+          const size = readSize(m);
           A().closeModal();
-          applyTableEdit(t, name, shape, n);
+          applyTableEdit(t, name, shape, n, size);
         };
       });
   }
 
   // Quién se queda sin silla si la mesa baja a n plazas (se reacomoda a los demás en sillas libres)
+  // Medida actual de una mesa en metros (para mostrarla)
+  function tableSizeText(t) {
+    const g = geom(t);
+    return g.kind === 'round' ? fmtM(g.r * 2) + ' m de diámetro' : fmtM(g.w) + ' × ' + fmtM(g.h) + ' m';
+  }
+  function sizeFields(shape, t) {
+    const g = t ? geom(t) : null;
+    const auto = t ? (g.kind === 'round' ? fmtM(g.r * 2) : fmtM(g.w)) : '';
+    const auto2 = t && g.kind !== 'round' ? fmtM(g.h) : '';
+    return '<div class="form-grid sizebox"><label><span id="tDwL">' + (shape === 'round' ? 'Diámetro (m)' : 'Largo (m)') + '</span><input id="tDw" type="number" inputmode="decimal" step="0.1" min="0.3" max="30" value="' + (t && t.dw ? t.dw : '') + '" placeholder="' + (auto ? auto + ' (auto)' : 'automático') + '"></label>' +
+      '<label id="tDhBox"' + (shape === 'round' ? ' hidden' : '') + '><span>Ancho (m)</span><input id="tDh" type="number" inputmode="decimal" step="0.1" min="0.3" max="30" value="' + (t && t.dh ? t.dh : '') + '" placeholder="' + (auto2 ? auto2 + ' (auto)' : 'automático') + '"></label></div>' +
+      '<small class="muted">Tamaño en metros. Déjalo vacío para que se calcule solo según las sillas.' + (t ? ' Ahora mide ' + tableSizeText(t) + '.' : '') + '</small>';
+  }
+  function wireSizeFields(m) {
+    $$('input[name=tShape]', m).forEach((r) => r.addEventListener('change', () => {
+      const round = r.value === 'round';
+      $('#tDwL', m).textContent = round ? 'Diámetro (m)' : 'Largo (m)';
+      $('#tDhBox', m).hidden = round;
+    }));
+  }
+  const readSize = (m) => {
+    const dw = Math.max(0, Math.min(30, parseFloat(String($('#tDw', m).value).replace(',', '.')) || 0));
+    const dh = Math.max(0, Math.min(30, parseFloat(String($('#tDh', m).value).replace(',', '.')) || 0));
+    return { dw: dw || undefined, dh: dh || undefined };
+  };
+
   function lostWithSeats(t, n) {
     const occ = occupancy()[t.id] || [];
     const occupants = occ.filter(Boolean);
@@ -770,7 +847,7 @@
     return occ.map((k, i) => (k && i >= n ? k : null)).filter(Boolean).slice(-(occupants.length - n));
   }
 
-  function applyTableEdit(t, name, shape, n) {
+  function applyTableEdit(t, name, shape, n, size) {
     pushUndo();
     const occ = occupancy()[t.id];
     const lost = [];
@@ -784,6 +861,7 @@
       });
     }
     Object.assign(t, { name, shape, seats: n });
+    if (size) { if (size.dw) t.dw = size.dw; else delete t.dw; if (size.dh && shape !== 'round') t.dh = size.dh; else delete t.dh; }
     if (lost.length) B.toast('⚠️ Se quedaron sin silla: <b>' + lost.map((k) => esc(keyName(k))).join(', ') + '</b>. Están en “Sin mesa”.', 'warn', 7000);
     else B.toast('Mesa actualizada ✓', 'ok', 1800);
     if (lost.length) { selection = new Set(lost); moveMsg = 'Se quedaron sin silla. Toca otra mesa para sentarlos.'; }
@@ -917,8 +995,10 @@
       head.innerHTML = back + '<h4>' + k.icon + ' ' + esc(it.label || k.name) + '</h4>';
       body.innerHTML = '<p class="small muted">' + esc(k.desc) + '. Arrástralo para moverlo y gíralo con el tirador ↻ (encaja cada 45°).</p>' +
         '<label class="frow"><span>Nombre</span><input id="iLabel" value="' + esc(it.label || '') + '" placeholder="' + esc(k.name) + '"></label>' +
-        '<div class="form-grid"><label><span>' + (thin ? 'Largo' : 'Ancho') + '</span><input id="iW" type="number" min="10" max="3000" step="10" value="' + (it.w || k.w) + '"></label>' +
-        '<label><span>' + (thin ? 'Grosor' : 'Alto') + '</span><input id="iH" type="number" min="4" max="3000" step="' + (thin ? 2 : 10) + '" value="' + (it.h || k.h) + '"></label></div>' +
+        '<div class="form-grid"><label><span>' + (thin ? 'Largo (m)' : 'Ancho (m)') + '</span><input id="iW" type="number" inputmode="decimal" min="0.1" max="100" step="0.1" value="' + px2m(it.w || k.w) + '"></label>' +
+        '<label><span>' + (thin ? 'Grosor (m)' : 'Largo (m)') + '</span><input id="iH" type="number" inputmode="decimal" min="0.05" max="100" step="' + (thin ? 0.05 : 0.1) + '" value="' + px2m(it.h || k.h) + '"></label></div>' +
+        '<p class="small muted" style="margin:-4px 0 8px">También puedes estirarlo o encogerlo con la esquina ⤡.</p>' +
+        (it.kind !== 'area' && it.kind !== 'wall' && it.kind !== 'window' ? '<label class="chk small" style="margin-bottom:8px"><input type="checkbox" id="iTop"' + (it.top ? ' checked' : '') + '> Poner encima de las mesas (p. ej. el pastel sobre la mesa de novios)</label>' : '') +
         '<div class="actions-col" style="grid-template-columns:repeat(3,1fr)"><button class="btn btn-sm" data-act="irotl">⟲ 45°</button><button class="btn btn-sm" data-act="irot0">Enderezar</button><button class="btn btn-sm" data-act="irotr">⟳ 45°</button></div>' +
         '<div class="actions-col"><button class="btn btn-sm" data-act="idup">Duplicar</button><button class="btn btn-sm btn-danger" data-act="idel">Eliminar</button></div>';
     }
@@ -928,7 +1008,7 @@
       const arr = occ[t.id];
       const used = arr.filter(Boolean).length;
       head.innerHTML = back + '<h4>' + esc(t.name) + '</h4><button class="btn btn-sm" data-act="edit">Editar</button>';
-      let html = '<div class="tstat"><div><b>' + (t.seats - used) + '</b><span>libres</span></div><div><b>' + used + '</b><span>ocupadas</span></div><div><b>' + t.seats + '</b><span>plazas · ' + ({ round: 'redonda', rect: 'rectangular', presidential: 'presidencial', novios: 'de novios' })[t.shape] + '</span></div></div>';
+      let html = '<div class="tstat"><div><b>' + (t.seats - used) + '</b><span>libres</span></div><div><b>' + used + '</b><span>ocupadas</span></div><div><b>' + t.seats + '</b><span>plazas · ' + ({ round: 'redonda', rect: 'rectangular', presidential: 'presidencial', novios: 'de novios' })[t.shape] + '</span></div></div><p class="small muted" style="margin:-4px 0 10px">📏 ' + tableSizeText(t) + '</p>';
       if (selection.size) {
         const free = t.seats - used + arr.filter((k) => k && selection.has(k)).length;
         html += '<button class="btn btn-block ' + (free >= selection.size ? 'btn-ok' : 'btn-danger') + '" data-act="seatsel">' + (free >= selection.size ? 'Sentar aquí a ' + selection.size + (selection.size > 1 ? ' personas' : ' persona') : '✗ No caben: faltan ' + (selection.size - free)) + '</button>';
@@ -1041,8 +1121,11 @@
       const lab = $('#iLabel', body), iw = $('#iW', body), ih = $('#iH', body);
       lab.oninput = () => edit(() => { it.label = lab.value.trim(); });
       lab.onchange = done;
-      iw.oninput = () => edit(() => { it.w = Math.max(10, Math.min(3000, +iw.value || 10)); });
-      ih.oninput = () => edit(() => { it.h = Math.max(4, Math.min(3000, +ih.value || 4)); });
+      const num = (el) => parseFloat(String(el.value).replace(',', '.'));
+      iw.oninput = () => { const v = num(iw); if (v > 0) edit(() => { it.w = Math.max(6, Math.min(6000, m2px(v))); }); };
+      ih.oninput = () => { const v = num(ih); if (v > 0) edit(() => { it.h = Math.max(3, Math.min(6000, m2px(v))); }); };
+      const topCb = $('#iTop', body);
+      if (topCb) topCb.onchange = () => { pushUndo(); it.top = topCb.checked; commit(); };
       iw.onchange = done; ih.onchange = done;
       const rot = (d) => { pushUndo(); it.rot = d === 0 ? 0 : (((Math.round(((it.rot || 0) + d) / 45) * 45) % 360) + 360) % 360; commit(); };
       on('[data-act=irotl]', () => rot(-45));
@@ -1191,7 +1274,7 @@
       '<rect width="100%" height="100%" fill="#fffdf9"/>' +
       '<text class="ttl" x="' + pad + '" y="34">Plano de mesas · ' + esc(cfg.name1 + ' & ' + cfg.name2) + '</text>' +
       '<text class="sub" x="' + pad + '" y="50">' + esc(B.formatLongDate(cfg) + ' · ' + cfg.venueName + ' · ' + new Date().toLocaleDateString('es-MX')) + '</text>' +
-      '<g transform="translate(' + (pad - b.x) + ' ' + (pad + top - b.y) + ')">' + itemsMarkup({ export: true }) + tablesMarkup({ export: true, names: true }) + '</g></svg>';
+      '<g transform="translate(' + (pad - b.x) + ' ' + (pad + top - b.y) + ')">' + itemsMarkup({ export: true, layer: 'below' }) + tablesMarkup({ export: true, names: true }) + itemsMarkup({ export: true, layer: 'above' }) + '</g></svg>';
     return { svgStr, w, h };
   }
 

@@ -371,3 +371,9 @@ input[type=range] { accent-color: var(--accent); padding: 0; border: 0; backgrou
 #loginFields { display: grid; gap: 12px; }
 .remember { display: flex; align-items: center; gap: 8px; justify-content: center; font-size: .9rem; color: var(--muted); cursor: pointer; }
 .remember input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
+
+/* Esquina para estirar elementos; en modo Sentar los elementos no estorban */
+.resizer rect { fill: #fff; stroke: var(--accent); stroke-width: 2.5; cursor: nwse-resize; }
+.resizer text { font: 700 12px sans-serif; fill: var(--accent); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.pl-stage:not(.organize) .itm { pointer-events: none; }
+.sizebox { margin-bottom: 4px; }
