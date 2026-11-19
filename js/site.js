@@ -511,20 +511,13 @@
     if (idx.length) {
       $('#doneIcon').textContent = '🥂';
       $('#doneTitle').textContent = '¡Gracias por confirmar!';
-      const hasDate = !!B.eventDates(cfg).start;
       const names = idx.map((i) => ms[i]).filter(Boolean);
       $('#doneText').innerHTML = '<b>' + esc(first) + '</b>: ' + (idx.length > 1 ? 'asistirán ' + idx.length + ' personas' : 'asistirá 1 persona') +
-        (ms.length > 1 ? ' (' + esc(names.join(', ')) + ')' : '') + '. ¡Nos vemos ahí!' + (hasDate ? '<br>Guarda la fecha en tu calendario:' : '');
-      const url = pageUrl();
-      $('#doneCal').innerHTML = !hasDate ? '' :
-        '<a class="btn btn-cal" target="_blank" rel="noopener" href="' + esc(B.googleCalUrl(cfg, url)) + '"><span>G</span>Google</a>' +
-        '<a class="btn btn-cal" download="boda.ics" href="' + esc(B.icsDataUrl(cfg, url)) + '"><span>A</span>Apple</a>' +
-        '<a class="btn btn-cal" target="_blank" rel="noopener" href="' + esc(B.outlookUrl(cfg, url)) + '"><span>O</span>Outlook</a>';
+        (ms.length > 1 ? ' (' + esc(names.join(', ')) + ')' : '') + '. ¡Nos vemos ahí!';
     } else {
       $('#doneIcon').textContent = '💌';
       $('#doneTitle').textContent = 'Gracias por avisarnos';
       $('#doneText').textContent = cfg.declineMessage || 'Te vamos a extrañar. Si cambian tus planes, puedes actualizar tu respuesta aquí mismo.';
-      $('#doneCal').innerHTML = '';
     }
     if (scroll) $('#rsvpDone').scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
