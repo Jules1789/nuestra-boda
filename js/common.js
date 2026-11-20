@@ -81,6 +81,14 @@
     lodgingUrl: '',
     lodgingRecs: '',
     hiddenSections: '',
+    sectionOrder: '',
+    namesFont: 'Cormorant Garamond',
+    namesSize: '50',
+    namesLayout: 'row',
+    namesAmp: '&',
+    namesCase: 'normal',
+    namesSpacing: '0',
+    namesShow: 'full',
     iconStyle: 'line',
     icoWhen: '',
     icoCeremony: '',
@@ -108,6 +116,14 @@
     ['Pareja', 'name1', 'Nombre 1', 'text'],
     ['Pareja', 'name2', 'Nombre 2', 'text'],
     ['Pareja', 'message', 'Mensaje de bienvenida', 'textarea'],
+    ['Pareja', '_names', 'Cómo se ven sus nombres en la portada', 'namesbox', 'Elige tipografía, tamaño y acomodo. La vista previa cambia al momento; pulsa Guardar cambios para aplicarlo en la web.'],
+    ['Pareja', 'namesFont', '', 'hidden'],
+    ['Pareja', 'namesSize', '', 'hidden'],
+    ['Pareja', 'namesLayout', '', 'hidden'],
+    ['Pareja', 'namesAmp', '', 'hidden'],
+    ['Pareja', 'namesCase', '', 'hidden'],
+    ['Pareja', 'namesSpacing', '', 'hidden'],
+    ['Pareja', 'namesShow', '', 'hidden'],
     ['Pareja', 'heroImage', 'Foto de portada', 'image', 'Se muestra de fondo al principio, con las montañas animadas encima. Vacío = fondo claro con montañas.'],
     ['Pareja', 'heroFocus', '', 'hidden'],
     ['Pareja', 'heroVeil', 'Transparencia de la foto de portada', 'range', '0 = foto tal cual · 100 = casi invisible (se funde con el color de fondo). Úsalo para que resalten las letras.'],
@@ -198,7 +214,8 @@
     ['Íconos', 'icoConfirmar', '', 'hidden'],
     ['Íconos', 'icoRecs', '', 'hidden'],
     ['Íconos', 'icoFaq', '', 'hidden'],
-    ['Secciones visibles', 'hiddenSections', 'Qué se muestra en la web', 'sections', 'Quita la palomita para ocultar una sección o tarjeta completa. Puedes volver a mostrarla cuando quieras.'],
+    ['Secciones: orden y visibilidad', 'sectionOrder', '', 'hidden'],
+    ['Secciones: orden y visibilidad', 'hiddenSections', 'Orden de las secciones en la web', 'sections', 'Usa ↑ ↓ para cambiar el orden. Quita la palomita para ocultar una sección o tarjeta completa. Las secciones sin contenido (por ejemplo, Nuestra historia sin texto ni fotos) no se muestran aunque estén palomeadas.'],
     ['Compartir', 'siteUrl', 'Dirección de tu web de boda', 'url', 'La dirección donde publicaste la web (termina en /).'],
     ['Compartir', 'countryCode', 'Lada del país para WhatsApp', 'text', 'México = 52'],
     ['Compartir', 'inviteTemplate', 'Mensaje de invitación', 'textarea', 'Puedes usar {nombre}, {novios}, {fecha}, {lugar} y {enlace}.'],
@@ -752,8 +769,53 @@
     return '<span class="i-emo">' + esc(v) + '</span>';
   }
 
+
+  /* ---- Nombres de la portada: tipografía, tamaño y acomodo ---- */
+  const NAME_FONTS = [
+    ['Cormorant Garamond', 'Clásica'], ['Playfair Display', 'Elegante'], ['Cinzel', 'Romana'], ['Italiana', 'Fina'],
+    ['Bodoni Moda', 'Moda'], ['Marcellus', 'Grabada'], ['Great Vibes', 'Caligrafía'], ['Parisienne', 'Parisina'],
+    ['Allura', 'Manuscrita'], ['Pinyon Script', 'Pluma'], ['Dancing Script', 'Casual'], ['Tangerine', 'Delicada']
+  ];
+  function loadFonts(list) {
+    const fams = list.filter((f) => f && NAME_FONTS.some((x) => x[0] === f) && f !== 'Cormorant Garamond');
+    if (!fams.length) return;
+    const href = 'https://fonts.googleapis.com/css2?' + fams.map((f) => 'family=' + f.replace(/ /g, '+')).join('&') + '&display=swap';
+    if (document.querySelector('link[href="' + href + '"]')) return;
+    const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l);
+  }
+  function displayName(n, show) {
+    n = String(n || '').trim();
+    const p = n.split(/\s+/).filter(Boolean);
+    if (show === 'first') return p[0] || n;
+    if (show === 'firstlast' && p.length >= 3) return p[0] + ' ' + p[p.length - 2];
+    return n;
+  }
+  function namesHtml(cfg, withIds) {
+    const a = displayName(cfg.name1, cfg.namesShow), b = displayName(cfg.name2, cfg.namesShow);
+    return '<span class="n1"' + (withIds ? ' id="n1"' : '') + '>' + esc(a) + '</span><span class="amp">' + esc(cfg.namesAmp || '&') + '</span><span class="n2"' + (withIds ? ' id="n2"' : '') + '>' + esc(b) + '</span>';
+  }
+  function applyNames(cfg, el) {
+    const font = NAME_FONTS.some((x) => x[0] === cfg.namesFont) ? cfg.namesFont : 'Cormorant Garamond';
+    loadFonts([font]);
+    const num = (v, d) => { const n = parseInt(v, 10); return isNaN(n) ? d : Math.max(0, Math.min(100, n)); };
+    const fam = "'" + font + "', 'Cormorant Garamond', Georgia, serif";
+    document.documentElement.style.setProperty('--names-font', fam);
+    if (!el) return;
+    el.innerHTML = namesHtml(cfg, el.id === 'heroNames');
+    el.className = 'names l-' + (cfg.namesLayout || 'row') + (cfg.namesCase === 'upper' ? ' up' : '');
+    el.style.setProperty('--nf', fam);
+    el.style.setProperty('--ns', (0.5 + num(cfg.namesSize, 50) / 100).toFixed(2));
+    el.style.setProperty('--nls', (num(cfg.namesSpacing, 0) / 100 * 0.35).toFixed(3) + 'em');
+  }
+  // Orden de las secciones principales: las guardadas primero, luego las que falten en su orden original
+  function sectionOrder(saved) {
+    const all = SECTION_OPTIONS.filter((o) => o[1][0] !== '·').map((o) => o[0]);
+    const list = String(saved || '').split(',').map((x) => x.trim()).filter((x) => all.includes(x));
+    return list.concat(all.filter((x) => !list.includes(x)));
+  }
+
   window.Boda = {
-    DEFAULT_CONFIG, FIELDS, STATUS_LABEL, ICONS, ICON_SLOTS, SECTION_OPTIONS, svgIcon, iconHtml, $, $$, esc, norm, newId, splitNames, partySize, memberName, members, attendingIdx, isPlaceholderName, normPhone, phoneList, groupLabel, PALETTES, initials, hueOf,
+    DEFAULT_CONFIG, FIELDS, STATUS_LABEL, NAME_FONTS, loadFonts, displayName, namesHtml, applyNames, sectionOrder, ICONS, ICON_SLOTS, SECTION_OPTIONS, svgIcon, iconHtml, $, $$, esc, norm, newId, splitNames, partySize, memberName, members, attendingIdx, isPlaceholderName, normPhone, phoneList, groupLabel, PALETTES, initials, hueOf,
     zonedToDate, eventDates, formatLongDate, formatShortDate, formatTime,
     googleCalUrl, outlookUrl, icsText, icsDataUrl,
     mapsLink, wazeLink, appleMapsLink, mapEmbed, mapQuery, places, fmtHour,

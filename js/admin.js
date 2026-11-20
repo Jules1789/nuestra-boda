@@ -761,10 +761,23 @@
         return;
       }
       if (type === 'sections') {
-        const hid = String(v || '').split(',').map((x) => x.trim()).filter(Boolean);
         s.html += '<div class="frow"><span>' + esc(label) + '</span><input type="hidden" name="' + key + '" value="' + esc(v) + '">' +
-          '<div class="sec-list" data-sections>' + B.SECTION_OPTIONS.map(([id, txt]) =>
-            '<label class="' + (txt[0] === '·' ? 'sub' : '') + '"><input type="checkbox" value="' + id + '"' + (hid.includes(id) ? '' : ' checked') + '> ' + esc(txt.replace(/^·\s*/, '')) + '</label>').join('') + '</div>' +
+          '<div class="sec-list" data-sections></div>' + (help ? '<small>' + esc(help) + '</small>' : '') + '</div>';
+        return;
+      }
+      if (type === 'namesbox') {
+        const seg = (k, opts) => '<div class="seg" data-seg="' + k + '">' + opts.map(([val, txt]) => '<button type="button" class="btn btn-sm" data-val="' + esc(val) + '">' + esc(txt) + '</button>').join('') + '</div>';
+        const short = (n) => String(n || '').trim().split(/\s+/)[0];
+        s.html += '<div class="frow names-box"><span>' + esc(label) + '</span>' +
+          '<div class="names-prev"><h1 class="names" id="namesPrev"></h1></div>' +
+          '<span class="nb-l">Tipografía</span><div class="font-grid">' + B.NAME_FONTS.map(([f, nm]) =>
+            '<button type="button" class="font-opt" data-font="' + esc(f) + '"><b style="font-family:\'' + f + '\', serif">' + esc(short(S.config.name1)) + ' &amp; ' + esc(short(S.config.name2)) + '</b><small>' + esc(nm) + '</small></button>').join('') + '</div>' +
+          '<span class="nb-l">Qué nombre mostrar</span>' + seg('namesShow', [['full', 'Nombre completo'], ['firstlast', 'Nombre y primer apellido'], ['first', 'Solo nombre']]) +
+          '<span class="nb-l">Distribución</span>' + seg('namesLayout', [['row', 'En una línea'], ['stack', 'Uno sobre otro'], ['stagger', 'Escalonado'], ['lines', '& entre líneas']]) +
+          '<span class="nb-l">Unión</span>' + seg('namesAmp', [['&', '&'], ['y', 'y'], ['+', '+'], ['♥', '♥']]) +
+          '<span class="nb-l">Letras</span>' + seg('namesCase', [['normal', 'Normal'], ['upper', 'MAYÚSCULAS']]) +
+          '<label class="nb-l">Tamaño <input type="range" min="0" max="100" data-rng="namesSize"></label>' +
+          '<label class="nb-l">Espacio entre letras <input type="range" min="0" max="100" data-rng="namesSpacing"></label>' +
           (help ? '<small>' + esc(help) + '</small>' : '') + '</div>';
         return;
       }
@@ -803,10 +816,8 @@
     $$('[data-photo]', form).forEach(renderPhotoField);
     $$('[data-list]', form).forEach(renderListField);
     // Secciones visibles: las palomitas quitadas se guardan como lista de ocultas
-    $$('[data-sections]', form).forEach((box) => {
-      const hidden = form.elements.hiddenSections;
-      box.onchange = () => { hidden.value = $$('input[type=checkbox]', box).filter((c) => !c.checked).map((c) => c.value).join(','); };
-    });
+    drawSections();
+    setupNamesBox();
     // Estilo de íconos
     $$('[data-iconstyle]', form).forEach((box) => {
       $$('button', box).forEach((b) => { b.onclick = () => { form.elements.iconStyle.value = b.dataset.val; $$('button', box).forEach((x) => x.classList.toggle('on', x === b)); drawIconSlots(); }; });
@@ -937,6 +948,61 @@
     };
   }
 
+
+  /* ---- Orden y visibilidad de las secciones ---- */
+  function drawSections() {
+    const form = $('#settingsForm');
+    const box = $('[data-sections]', form);
+    if (!box) return;
+    const hid = String(form.elements.hiddenSections.value || '').split(',').map((x) => x.trim()).filter(Boolean);
+    const groups = [];
+    B.SECTION_OPTIONS.forEach(([id, txt]) => {
+      if (txt[0] === '·') { if (groups.length) groups[groups.length - 1].subs.push([id, txt.replace(/^·\s*/, '')]); }
+      else groups.push({ id, txt, subs: [] });
+    });
+    const order = B.sectionOrder(form.elements.sectionOrder.value);
+    groups.sort((x, y) => order.indexOf(x.id) - order.indexOf(y.id));
+    const chk = (id) => '<input type="checkbox" value="' + id + '"' + (hid.includes(id) ? '' : ' checked') + '>';
+    box.innerHTML = groups.map((g, i) => '<div class="sec-group"><div class="sec-row"><label>' + chk(g.id) + ' ' + esc(g.txt.replace(/ \(sección completa\)/, '')) + '</label>' +
+      '<span class="sec-move"><button type="button" class="btn btn-sm" data-mv="' + i + '" data-d="-1" title="Subir"' + (i ? '' : ' disabled') + '>↑</button>' +
+      '<button type="button" class="btn btn-sm" data-mv="' + i + '" data-d="1" title="Bajar"' + (i < groups.length - 1 ? '' : ' disabled') + '>↓</button></span></div>' +
+      g.subs.map(([id, t]) => '<label class="sub">' + chk(id) + ' ' + esc(t) + '</label>').join('') + '</div>').join('');
+    box.onchange = () => { form.elements.hiddenSections.value = $$('input[type=checkbox]', box).filter((c) => !c.checked).map((c) => c.value).join(','); };
+    $$('[data-mv]', box).forEach((b) => {
+      b.onclick = () => {
+        const ids = groups.map((g) => g.id);
+        const i = +b.dataset.mv, j = i + +b.dataset.d;
+        [ids[i], ids[j]] = [ids[j], ids[i]];
+        form.elements.sectionOrder.value = ids.join(',');
+        drawSections();
+        B.toast('Orden cambiado. Pulsa <b>Guardar cambios</b> para verlo en la web.', 'info', 2200);
+      };
+    });
+  }
+
+  /* ---- Nombres de la portada: vista previa en vivo ---- */
+  function setupNamesBox() {
+    const form = $('#settingsForm');
+    const box = $('.names-box', form);
+    if (!box) return;
+    B.loadFonts(B.NAME_FONTS.map((f) => f[0]));
+    const val = (k) => (form.elements[k] && form.elements[k].value) || B.DEFAULT_CONFIG[k];
+    const setv = (k, v) => { if (form.elements[k]) form.elements[k].value = v; };
+    const refresh = () => {
+      const cfg = Object.assign({}, S.config);
+      ['namesFont', 'namesSize', 'namesLayout', 'namesAmp', 'namesCase', 'namesSpacing', 'namesShow', 'name1', 'name2'].forEach((k) => { cfg[k] = val(k); });
+      B.applyNames(cfg, $('#namesPrev'));
+      const short = (n) => String(n || '').trim().split(/\s+/)[0];
+      $$('[data-font]', box).forEach((b) => { b.classList.toggle('on', b.dataset.font === cfg.namesFont); $('b', b).textContent = short(cfg.name1) + ' & ' + short(cfg.name2); });
+      $$('[data-seg]', box).forEach((g) => $$('button', g).forEach((b) => b.classList.toggle('on', b.dataset.val === cfg[g.dataset.seg])));
+      $$('[data-rng]', box).forEach((r) => { r.value = cfg[r.dataset.rng]; });
+    };
+    $$('[data-font]', box).forEach((b) => { b.onclick = () => { setv('namesFont', b.dataset.font); refresh(); }; });
+    $$('[data-seg]', box).forEach((g) => $$('button', g).forEach((b) => { b.onclick = () => { setv(g.dataset.seg, b.dataset.val); refresh(); }; }));
+    $$('[data-rng]', box).forEach((r) => { r.oninput = () => { setv(r.dataset.rng, r.value); refresh(); }; });
+    ['name1', 'name2'].forEach((k) => { if (form.elements[k]) form.elements[k].addEventListener('input', refresh); });
+    refresh();
+  }
 
   /* ---- Íconos personalizables: ícono fino, emoji o imagen propia ---- */
   function drawIconSlots() {

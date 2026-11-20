@@ -48,7 +48,7 @@
   function render() {
     B.applyTheme(cfg);
     document.title = cfg.name1 + ' & ' + cfg.name2 + ' · Nuestra boda';
-    setText('#n1', cfg.name1); setText('#n2', cfg.name2);
+    B.applyNames(cfg, $('#heroNames'));
     setText('#brand', (cfg.name1 || ' ')[0] + '&' + (cfg.name2 || ' ')[0]);
     setText('#footNames', cfg.name1 + ' & ' + cfg.name2);
     const longDate = B.formatLongDate(cfg);
@@ -225,6 +225,9 @@
     // Títulos personalizados e íconos
     $$('[data-lbl]').forEach((el) => { const v = cfg[el.dataset.lbl]; if (v) el.textContent = v; });
     $$('[data-ico]').forEach((el) => { el.innerHTML = B.iconHtml(cfg, el.dataset.ico); });
+    // Orden de las secciones elegido en el panel
+    const mainEl = $('main');
+    B.sectionOrder(cfg.sectionOrder).forEach((id) => { const el = document.getElementById(id); if (el && el.parentNode === mainEl) mainEl.appendChild(el); });
     // Secciones que los novios decidieron ocultar
     String(cfg.hiddenSections || '').split(',').map((x) => x.trim()).filter(Boolean).forEach((id) => {
       const el = document.getElementById(id);
