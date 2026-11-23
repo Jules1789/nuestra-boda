@@ -166,7 +166,6 @@
     // Sin fecha todavía: se ocultan la cuenta regresiva, el calendario y "Cuándo"
     const hasDate = !!B.eventDates(cfg).start;
     showIf('#countdown', hasDate); showIf('#cardWhen', hasDate);
-    showIf('.hero-cta a[href="#cardWhen"]', hasDate);
     // Sin lugares todavía: se oculta "Cómo llegar"
     showIf('#ubicacion', places.length);
 
@@ -233,8 +232,6 @@
       const el = document.getElementById(id);
       if (el) el.hidden = true;
       if (id === 'historia') showIf('#navHistoria', false);
-      if (id === 'cardWhen' || id === 'detalles') showIf('.hero-cta a[href="#cardWhen"]', false);
-      if (id === 'confirmar') showIf('.hero-cta a[href="#confirmar"]', false);
     });
 
     heroPines();

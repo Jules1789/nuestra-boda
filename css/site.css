@@ -123,7 +123,7 @@ h1, h2, h3 { font-family: var(--serif); font-weight: 500; margin: 0; }
 .topnav .links { display: flex; gap: 14px; align-items: center; font-size: .9rem; }
 .topnav .links a { color: var(--ink); text-decoration: none; }
 .topnav .nav-cta { background: var(--accent); color: #fff !important; padding: 6px 14px; border-radius: 999px; }
-@media (max-width: 560px) { .topnav .links a:not(.nav-cta) { display: none; } }
+@media (max-width: 560px) { .topnav .links a:not([href="#detalles"]) { display: none; } }
 
 /* Secciones */
 .section { padding: 20px 16px 64px; max-width: 1040px; margin: 0 auto; text-align: center; }
