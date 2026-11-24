@@ -41,11 +41,14 @@
     story: '',
     gallery: '',
     preweddingVideos: '',
-    theme: '#9a7b4f',
-    colorBg: '#f7f2ea',
-    colorText: '#2f2a24',
-    colorCard: '#fffdf9',
-    colorNature: '#5f6b56',
+    theme: '#5d7391',
+    colorBg: '#f7f3eb',
+    colorText: '#4a3428',
+    colorCard: '#fffdf8',
+    colorNature: '#8e86a8',
+    colorTitle: '#8e86a8',
+    colorWarm: '#e2a588',
+    colorStone: '#cfc6b8',
     declineDeadline: '',
     declineMessage: 'Te vamos a extrañar mucho y te llevaremos en el corazón ese día. Si tus planes cambian, aquí mismo puedes actualizar tu respuesta.',
     welcomeMessage: 'Con todo nuestro cariño queremos compartir contigo uno de los días más importantes de nuestra vida. Tu presencia hará este momento aún más especial.',
@@ -138,6 +141,9 @@
     ['Colores', 'colorCard', 'Color de las tarjetas', 'color'],
     ['Colores', 'colorText', 'Color del texto', 'color'],
     ['Colores', 'colorNature', 'Color de montañas y pinos', 'color'],
+    ['Colores', 'colorTitle', 'Color de los títulos grandes', 'color', 'Solo para títulos grandes; el texto normal usa el color del texto.'],
+    ['Colores', 'colorWarm', 'Color de detalles cálidos (líneas, puntos, sol)', 'color', 'Es decorativo: nunca se usa para letras.'],
+    ['Colores', 'colorStone', 'Color de las secciones alternas', 'color', 'Se mezcla con el fondo para las franjas de color.'],
     ['Nuestra historia', 'storyTitle', 'Título de la sección', 'text'],
     ['Nuestra historia', 'story', 'Nuestra historia', 'textarea', 'Cuéntales cómo se conocieron, la pedida, lo que quieran. Cada renglón es un párrafo. Si lo dejas vacío (y sin fotos), la sección no aparece.'],
     ['Nuestra historia', 'gallery', 'Fotos', 'gallery', 'Se ven en una galería; tus invitados pueden tocarlas para verlas en grande.'],
@@ -543,13 +549,14 @@
 
   // Paletas listas para elegir en Ajustes
   const PALETTES = [
-    { name: 'Bosque', theme: '#9a7b4f', colorBg: '#f7f2ea', colorCard: '#fffdf9', colorText: '#2f2a24', colorNature: '#5f6b56' },
-    { name: 'Terracota', theme: '#b5653f', colorBg: '#f8efe6', colorCard: '#fffaf5', colorText: '#3a2a22', colorNature: '#7a6a4f' },
-    { name: 'Vino', theme: '#7b2d3b', colorBg: '#f6eeee', colorCard: '#fffafa', colorText: '#2e2024', colorNature: '#4f5d4b' },
-    { name: 'Azul noche', theme: '#2f4a6b', colorBg: '#eef2f6', colorCard: '#fbfdff', colorText: '#1e2a38', colorNature: '#3f5a5a' },
-    { name: 'Rosa palo', theme: '#b77b86', colorBg: '#faf1f1', colorCard: '#fffafa', colorText: '#3b2c30', colorNature: '#7f8f78' },
-    { name: 'Lavanda', theme: '#7c6a9e', colorBg: '#f4f1f8', colorCard: '#fdfcff', colorText: '#2c2738', colorNature: '#5f6b7a' },
-    { name: 'Olivo y oro', theme: '#a8892f', colorBg: '#f3f1e7', colorCard: '#fffef8', colorText: '#2a2a1f', colorNature: '#5b6338' }
+    { name: 'Atardecer en la sierra', theme: '#5d7391', colorBg: '#f7f3eb', colorCard: '#fffdf8', colorText: '#4a3428', colorNature: '#8e86a8', colorTitle: '#8e86a8', colorWarm: '#e2a588', colorStone: '#cfc6b8' },
+    { name: 'Bosque', theme: '#9a7b4f', colorBg: '#f7f2ea', colorCard: '#fffdf9', colorText: '#2f2a24', colorNature: '#5f6b56', colorTitle: '#2f2a24', colorWarm: '#9a7b4f', colorStone: '#e4dacb' },
+    { name: 'Terracota', theme: '#b5653f', colorBg: '#f8efe6', colorCard: '#fffaf5', colorText: '#3a2a22', colorNature: '#7a6a4f', colorTitle: '#3a2a22', colorWarm: '#b5653f', colorStone: '#ebd3c5' },
+    { name: 'Vino', theme: '#7b2d3b', colorBg: '#f6eeee', colorCard: '#fffafa', colorText: '#2e2024', colorNature: '#4f5d4b', colorTitle: '#2e2024', colorWarm: '#7b2d3b', colorStone: '#ddc7ca' },
+    { name: 'Azul noche', theme: '#2f4a6b', colorBg: '#eef2f6', colorCard: '#fbfdff', colorText: '#1e2a38', colorNature: '#3f5a5a', colorTitle: '#1e2a38', colorWarm: '#2f4a6b', colorStone: '#c8d0da' },
+    { name: 'Rosa palo', theme: '#b77b86', colorBg: '#faf1f1', colorCard: '#fffafa', colorText: '#3b2c30', colorNature: '#7f8f78', colorTitle: '#3b2c30', colorWarm: '#b77b86', colorStone: '#edd9dc' },
+    { name: 'Lavanda', theme: '#7c6a9e', colorBg: '#f4f1f8', colorCard: '#fdfcff', colorText: '#2c2738', colorNature: '#5f6b7a', colorTitle: '#2c2738', colorWarm: '#7c6a9e', colorStone: '#dcd6e6' },
+    { name: 'Olivo y oro', theme: '#a8892f', colorBg: '#f3f1e7', colorCard: '#fffef8', colorText: '#2a2a1f', colorNature: '#5b6338', colorTitle: '#2a2a1f', colorWarm: '#a8892f', colorStone: '#e4dcc2' }
   ];
 
   function applyTheme(cfg) {
@@ -561,6 +568,11 @@
     set('--card', cfg.colorCard, DEFAULT_CONFIG.colorCard);
     set('--ink', cfg.colorText, DEFAULT_CONFIG.colorText);
     set('--nature', cfg.colorNature, DEFAULT_CONFIG.colorNature);
+    // Opcionales: si faltan, la hoja de estilos usa el color principal
+    const opt = (v, c) => ok(c) ? r.setProperty(v, c.trim()) : r.removeProperty(v);
+    opt('--title-c', cfg.colorTitle);
+    opt('--warm-c', cfg.colorWarm);
+    opt('--stone-c', cfg.colorStone);
   }
 
   /* ---------------- Toasts ---------------- */

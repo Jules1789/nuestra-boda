@@ -833,7 +833,7 @@
       if (type === 'palette') {
         s.html += '<div class="frow"><span>' + esc(label) + '</span><div class="palettes">' + B.PALETTES.map((pl, i) =>
           '<button type="button" class="pal" data-pal="' + i + '" title="' + esc(pl.name) + '">' +
-          '<i style="background:' + pl.colorBg + '"></i><i style="background:' + pl.theme + '"></i><i style="background:' + pl.colorNature + '"></i><i style="background:' + pl.colorText + '"></i>' +
+          '<i style="background:' + pl.colorBg + '"></i><i style="background:' + pl.theme + '"></i><i style="background:' + (pl.colorWarm || pl.colorNature) + '"></i><i style="background:' + pl.colorNature + '"></i><i style="background:' + pl.colorText + '"></i>' +
           '<small>' + esc(pl.name) + '</small></button>').join('') + '</div>' + (help ? '<small>' + esc(help) + '</small>' : '') + '</div>';
         return;
       }
@@ -873,7 +873,7 @@
     });
     drawIconSlots();
     // Paletas: llenan los colores para que los veas; se guardan con "Guardar cambios"
-    const COLOR_KEYS = ['theme', 'colorBg', 'colorCard', 'colorText', 'colorNature'];
+    const COLOR_KEYS = ['theme', 'colorBg', 'colorCard', 'colorText', 'colorNature', 'colorTitle', 'colorWarm', 'colorStone'];
     const previewColors = () => { const o = {}; COLOR_KEYS.forEach((k) => { if (form.elements[k]) o[k] = form.elements[k].value; }); B.applyTheme(o); };
     $$('[data-pal]', form).forEach((b) => {
       b.onclick = () => {

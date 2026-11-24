@@ -9,12 +9,12 @@
   <meta property="og:title" content="¡Nos casamos!">
   <meta property="og:description" content="Todos los detalles de nuestra boda y confirma tu asistencia.">
   <meta property="og:type" content="website">
-  <meta name="theme-color" content="#f7f2ea">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='24' cy='36' r='14' fill='none' stroke='%239a7b4f' stroke-width='5'/%3E%3Ccircle cx='40' cy='36' r='14' fill='none' stroke='%239a7b4f' stroke-width='5'/%3E%3C/svg%3E">
+  <meta name="theme-color" content="#f7f3eb">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='24' cy='36' r='14' fill='none' stroke='%238e86a8' stroke-width='5'/%3E%3Ccircle cx='40' cy='36' r='14' fill='none' stroke='%23e2a588' stroke-width='5'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/site.css?v=26">
+  <link rel="stylesheet" href="css/site.css?v=27">
 </head>
 <body>
   <div id="loading" class="loading"><div class="rings"></div></div>
@@ -27,11 +27,11 @@
     <!-- Paisaje animado: sol, nubes, aves, montañas y pinos -->
     <svg class="landscape" viewBox="0 0 1440 420" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
       <defs>
-        <radialGradient id="sunGlow"><stop offset="0" stop-color="#fff6dc" stop-opacity=".95"/><stop offset=".45" stop-color="#f4d9a6" stop-opacity=".45"/><stop offset="1" stop-color="#f4d9a6" stop-opacity="0"/></radialGradient>
+        <radialGradient id="sunGlow"><stop offset="0" stop-color="#fdf0e6" stop-opacity=".95"/><stop offset=".45" style="stop-color:var(--warm)" stop-opacity=".45"/><stop offset="1" style="stop-color:var(--warm)" stop-opacity="0"/></radialGradient>
         <filter id="soft"><feGaussianBlur stdDeviation="9"/></filter>
         <g id="pineShape"><path d="M0-62 L-11-38 L-6-38 L-16-18 L-9-18 L-21 4 L21 4 L9-18 L16-18 L6-38 L11-38Z"/><rect x="-2.6" y="4" width="5.2" height="9"/></g>
       </defs>
-      <g class="sun"><circle cx="1080" cy="150" r="120" fill="url(#sunGlow)"/><circle cx="1080" cy="150" r="30" fill="#fbecc9" opacity=".85"/></g>
+      <g class="sun"><circle cx="1080" cy="150" r="120" fill="url(#sunGlow)"/><circle cx="1080" cy="150" r="30" style="fill:color-mix(in srgb, var(--warm) 40%, #fff)" opacity=".85"/></g>
       <g class="clouds" filter="url(#soft)" fill="#fff" opacity=".7">
         <g class="cloud c1"><ellipse cx="240" cy="110" rx="120" ry="20"/><ellipse cx="300" cy="98" rx="70" ry="18"/></g>
         <g class="cloud c2"><ellipse cx="820" cy="70" rx="150" ry="18"/><ellipse cx="880" cy="60" rx="80" ry="16"/></g>
@@ -46,7 +46,7 @@
         <path d="M1440 300 L1560 180 L1650 240 L1770 120 L1910 250 L2000 170 L2140 260 L2260 140 L2400 250 L2520 160 L2640 240 L2760 150 L2880 230 L2880 420 L1440 420Z" style="fill:var(--n-far)"/>
         <path d="M330 120 L300 150 L318 146 L330 160 L344 146 L362 152Z M820 140 L792 168 L810 164 L822 176 L836 164 L852 170Z M1320 150 L1296 174 L1312 170 L1322 182 L1334 170 L1348 176Z M1770 120 L1740 150 L1758 146 L1770 160 L1784 146 L1802 152Z M2260 140 L2232 168 L2250 164 L2262 176 L2276 164 L2292 170Z M2760 150 L2736 174 L2752 170 L2762 182 L2774 170 L2788 176Z" fill="#eef1ea" opacity=".85"/>
       </g></g>
-      <g class="mist" filter="url(#soft)"><rect x="-200" y="250" width="1900" height="40" fill="#f3f1ea" opacity=".55"/></g>
+      <g class="mist" filter="url(#soft)"><rect x="-200" y="250" width="1900" height="40" style="fill:var(--bg)" opacity=".55"/></g>
       <g class="layer mid">
         <path d="M0 330 L150 240 L260 300 L390 210 L520 310 L640 250 L780 320 L900 230 L1040 320 L1180 250 L1300 310 L1440 260 L1440 420 L0 420Z" style="fill:var(--n-mid)"/>
       </g>
@@ -303,8 +303,8 @@
     <button class="lb-nav next" id="lbNext" aria-label="Siguiente">›</button>
   </div>
 
-  <script src="js/config.js?v=26"></script>
-  <script src="js/common.js?v=26"></script>
-  <script src="js/site.js?v=26"></script>
+  <script src="js/config.js?v=27"></script>
+  <script src="js/common.js?v=27"></script>
+  <script src="js/site.js?v=27"></script>
 </body>
 </html>
