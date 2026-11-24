@@ -85,7 +85,7 @@
     lodgingRecs: '',
     hiddenSections: '',
     sectionOrder: '',
-    namesFont: 'Cormorant Garamond',
+    namesFont: 'Cardo',
     namesSize: '50',
     namesLayout: 'row',
     namesAmp: '&',
@@ -784,12 +784,12 @@
 
   /* ---- Nombres de la portada: tipografía, tamaño y acomodo ---- */
   const NAME_FONTS = [
-    ['Cormorant Garamond', 'Clásica'], ['Playfair Display', 'Elegante'], ['Cinzel', 'Romana'], ['Italiana', 'Fina'],
+    ['Cardo', 'Papelería'], ['Cormorant Garamond', 'Clásica'], ['Playfair Display', 'Elegante'], ['Cinzel', 'Romana'], ['Italiana', 'Fina'],
     ['Bodoni Moda', 'Moda'], ['Marcellus', 'Grabada'], ['Great Vibes', 'Caligrafía'], ['Parisienne', 'Parisina'],
     ['Allura', 'Manuscrita'], ['Pinyon Script', 'Pluma'], ['Dancing Script', 'Casual'], ['Tangerine', 'Delicada']
   ];
   function loadFonts(list) {
-    const fams = list.filter((f) => f && NAME_FONTS.some((x) => x[0] === f) && f !== 'Cormorant Garamond');
+    const fams = list.filter((f) => f && NAME_FONTS.some((x) => x[0] === f));
     if (!fams.length) return;
     const href = 'https://fonts.googleapis.com/css2?' + fams.map((f) => 'family=' + f.replace(/ /g, '+')).join('&') + '&display=swap';
     if (document.querySelector('link[href="' + href + '"]')) return;
@@ -807,10 +807,10 @@
     return '<span class="n1"' + (withIds ? ' id="n1"' : '') + '>' + esc(a) + '</span><span class="amp">' + esc(cfg.namesAmp || '&') + '</span><span class="n2"' + (withIds ? ' id="n2"' : '') + '>' + esc(b) + '</span>';
   }
   function applyNames(cfg, el) {
-    const font = NAME_FONTS.some((x) => x[0] === cfg.namesFont) ? cfg.namesFont : 'Cormorant Garamond';
+    const font = NAME_FONTS.some((x) => x[0] === cfg.namesFont) ? cfg.namesFont : 'Cardo';
     loadFonts([font]);
     const num = (v, d) => { const n = parseInt(v, 10); return isNaN(n) ? d : Math.max(0, Math.min(100, n)); };
-    const fam = "'" + font + "', 'Cormorant Garamond', Georgia, serif";
+    const fam = "'" + font + "', 'Cardo', Georgia, serif";
     document.documentElement.style.setProperty('--names-font', fam);
     if (!el) return;
     el.innerHTML = namesHtml(cfg, el.id === 'heroNames');
