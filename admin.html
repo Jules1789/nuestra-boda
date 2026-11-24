@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/admin.css?v=25">
+  <link rel="stylesheet" href="css/admin.css?v=26">
 </head>
 <body>
   <!-- Acceso -->
@@ -91,7 +91,8 @@
           <select id="gGroupFilter"><option value="">Todos los grupos</option></select>
         </div>
         <div class="merge-bar" id="mergeBar" hidden><span>Seleccionadas: <b id="mergeCount">0</b> · toca las invitaciones que forman una familia</span><button class="btn btn-sm" id="btnMergeCancel">Cancelar</button><button class="btn btn-primary btn-sm" id="btnMergeGo" disabled>Unir en una familia</button></div>
-        <p class="muted small" id="gCount"></p>
+        <div class="list-head"><p class="muted small" id="gCount"></p>
+          <div class="seg view-toggle" id="viewToggle"><button type="button" class="btn btn-sm" data-view="cards">▦ Tarjetas</button><button type="button" class="btn btn-sm" data-view="table">☷ Tabla</button></div></div>
         <div id="guestList" class="guest-list"></div>
       </section>
 
@@ -142,10 +143,10 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" defer></script>
-  <script src="js/config.js?v=25"></script>
-  <script src="js/common.js?v=25"></script>
-  <script src="js/plano.js?v=25"></script>
-  <script src="js/admin.js?v=25"></script>
+  <script src="js/config.js?v=26"></script>
+  <script src="js/common.js?v=26"></script>
+  <script src="js/plano.js?v=26"></script>
+  <script src="js/admin.js?v=26"></script>
   <script>
     // Si los archivos del panel no cargaron (por ejemplo, al abrirlo como archivo suelto), avisamos en vez de quedarnos en blanco
     if (!window.Admin) { var w = document.getElementById('loadWarn'); if (w) w.hidden = false; }

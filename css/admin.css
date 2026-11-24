@@ -432,3 +432,19 @@ input[type=range] { accent-color: var(--accent); padding: 0; border: 0; backgrou
 .font-opt small { font-size: .72rem; color: var(--muted); }
 .font-opt.on, .font-opt:hover { border-color: var(--accent); }
 .font-opt.on { box-shadow: 0 0 0 2px var(--accent) inset; }
+
+/* Invitados: vista de tabla */
+.list-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 4px 0 8px; }
+.list-head p { margin: 0; }
+.view-toggle .btn.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+.guest-list.as-table { display: block; }
+.gtable-wrap { overflow: auto; max-height: calc(100vh - 260px); border: 1px solid var(--line); border-radius: 12px; background: var(--card, #fff); }
+.gtable { width: 100%; border-collapse: collapse; font-size: .88rem; }
+.gtable th, .gtable td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.gtable th { position: sticky; top: 0; background: var(--bg, #f7f2ea); font-weight: 600; cursor: pointer; user-select: none; z-index: 2; }
+.gtable th.sorted { color: var(--accent); }
+.gtable tbody tr { cursor: pointer; }
+.gtable tbody tr:hover td { background: #f6efe4; }
+.gtable tr.first td { border-top: 2px solid var(--line); }
+.gtable td.num { color: var(--muted); text-align: right; }
+.gtable td:nth-child(2) { position: sticky; left: 0; background: var(--card, #fff); z-index: 1; }

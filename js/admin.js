@@ -327,6 +327,9 @@
     $('#mergeCount').textContent = picked.size;
     $('#btnMergeGo').disabled = picked.size < 2;
     $('#btnMerge').classList.toggle('btn-primary', !!S.selecting);
+    $$('#viewToggle button').forEach((b) => b.classList.toggle('on', b.dataset.view === guestView()));
+    if (guestView() === 'table' && !S.selecting) { renderGuestTable(list); return; }
+    $('#guestList').classList.remove('as-table');
     $('#guestList').innerHTML = list.length ? list.map((g) => {
       const tables = guestTables(g);
       const ms = B.members(g), att = B.attendingIdx(g);
@@ -357,7 +360,53 @@
     $$('#guestList [data-wa]').forEach((el) => { el.onclick = () => sendInvite(el.dataset.wa); });
   }
 
+  /* ---- Vista de tabla: una fila por persona, como en la pestaña de la hoja ---- */
+  function guestView() {
+    if (!S.view) { try { S.view = localStorage.getItem('boda_guest_view') || 'cards'; } catch (e) { S.view = 'cards'; } }
+    return S.view;
+  }
+  function seatTableName(key) { const r = tableOf(key); return r ? r.table.name : ''; }
+  const TABLE_COLS = [
+    ['n', '#'], ['person', 'Nombre'], ['invite', 'Invitación'], ['group', 'Grupo / Familia'], ['att', 'Asistencia'],
+    ['table', 'Mesa'], ['cabin', 'Cabaña'], ['phone', 'Teléfono'], ['diet', 'Restricciones'], ['sent', 'Invitación enviada']
+  ];
+  function renderGuestTable(list) {
+    const q = norm($('#gSearch').value);
+    const rows = [];
+    list.forEach((g) => {
+      const ms = B.members(g), att = B.attendingIdx(g);
+      const anyMatch = q && ms.some((m) => norm(m).includes(q));
+      ms.forEach((m, i) => {
+        if (anyMatch && !norm(m).includes(q)) return;
+        const a = g.status === 'si' ? (att.includes(i) ? 'si' : 'no') : g.status;
+        rows.push({ g, i, person: m, invite: g.name, group: g.group || '', att: a, attTxt: a === 'si' ? 'Asiste' : a === 'no' ? 'No asiste' : 'Pendiente',
+          table: seatTableName(g.id + '#' + i), cabin: g.cabin || '', phone: i === 0 ? (g.phone || '') : '', diet: g.diet || '', sent: g.invitedAt ? fmtDate(g.invitedAt) : '' });
+      });
+    });
+    const sk = S.sortKey || '', dir = S.sortDir || 1;
+    const sv = (r) => String(sk === 'att' ? r.attTxt : (r[sk] || ''));
+    if (sk) rows.sort((x, y) => dir * sv(x).localeCompare(sv(y), 'es', { numeric: true }));
+    const nSi = rows.filter((r) => r.att === 'si').length, nNo = rows.filter((r) => r.att === 'no').length;
+    $('#gCount').textContent = list.length + ' invitaciones · ' + rows.length + ' personas · ' + nSi + ' asisten · ' + nNo + ' no asisten';
+    const box = $('#guestList');
+    box.classList.add('as-table');
+    if (!rows.length) { box.innerHTML = '<p class="muted">No hay invitados con este filtro.</p>'; return; }
+    box.innerHTML = '<div class="gtable-wrap"><table class="gtable"><thead><tr>' + TABLE_COLS.map(([k, t]) =>
+      '<th' + (k === 'n' ? '' : ' data-sort="' + k + '"') + (sk === k ? ' class="sorted"' : '') + '>' + esc(t) + (sk === k ? (dir > 0 ? ' ▲' : ' ▼') : '') + '</th>').join('') + '</tr></thead><tbody>' +
+      rows.map((r, n) => '<tr data-edit="' + r.g.id + '"' + (r.i === 0 && !sk ? ' class="first"' : '') + '><td class="num">' + (n + 1) + '</td><td><b>' + esc(r.person) + '</b></td><td>' + esc(r.invite) + '</td><td>' + esc(r.group) + '</td>' +
+        '<td><span class="pill ' + r.att + '">' + r.attTxt + '</span></td><td>' + esc(r.table) + '</td><td>' + esc(r.cabin) + '</td><td>' + esc(r.phone) + '</td><td>' + esc(r.diet) + '</td>' +
+        '<td>' + (r.sent ? '<span style="color:var(--ok)">✓ ' + esc(r.sent) + '</span>' : '<span class="muted">—</span>') + '</td></tr>').join('') +
+      '</tbody></table></div>';
+    $$('#guestList [data-edit]').forEach((el) => { el.onclick = () => openGuest(el.dataset.edit); });
+    $$('#guestList [data-sort]').forEach((th) => {
+      th.onclick = () => { const k = th.dataset.sort; if (S.sortKey === k) S.sortDir = -(S.sortDir || 1); else { S.sortKey = k; S.sortDir = 1; } renderGuests(); };
+    });
+  }
+
   function setupGuestUi() {
+    $$('#viewToggle button').forEach((b) => {
+      b.onclick = () => { S.view = b.dataset.view; try { localStorage.setItem('boda_guest_view', S.view); } catch (e) {} renderGuests(); };
+    });
     $('#gSearch').addEventListener('input', renderGuests);
     $('#gGroupFilter').addEventListener('change', renderGuests);
     $$('#gFilters button').forEach((b) => {
