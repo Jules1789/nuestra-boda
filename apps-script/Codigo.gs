@@ -186,6 +186,7 @@ function enrutar_(p) {
   if (accion === 'public') return publico_(p);
   if (accion === 'rsvp') return conBloqueo_(function () { return rsvp_(p); });
   if (accion === 'lookup') return buscar_(p);
+  if (String(accion).indexOf('spy_') === 0) return espia_(p); // El invitado espía (archivo Espia.gs)
 
   // --- Todo lo demás es solo para organizadores ---
   var cfg = leerConfig_();
